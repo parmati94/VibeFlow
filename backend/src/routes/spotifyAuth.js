@@ -16,23 +16,41 @@ const SPOTIFY_SCOPES = [
 router.get('/login', (req, res) => {
   const state = Math.random().toString(36).substring(7);
   req.session.spotifyState = state;
+  
+  // Save session before redirecting
+  req.session.save((err) => {
+    if (err) {
+      console.error('Session save error:', err);
+      return res.status(500).json({ error: 'Failed to initialize session' });
+    }
 
-  const authUrl = `${SPOTIFY_AUTH_URL}?${querystring.stringify({
-    response_type: 'code',
-    client_id: process.env.SPOTIFY_CLIENT_ID,
-    scope: SPOTIFY_SCOPES.join(' '),
-    redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
-    state: state
-  })}`;
+    const authUrl = `${SPOTIFY_AUTH_URL}?${querystring.stringify({
+      response_type: 'code',
+      client_id: process.env.SPOTIFY_CLIENT_ID,
+      scope: SPOTIFY_SCOPES.join(' '),
+      redirect_uri: process.env.SPOTIFY_REDIRECT_URI,
+      state: state
+    })}`;
 
-  res.json({ authUrl });
+    res.json({ authUrl });
+  });
 });
 
 // Spotify OAuth callback
 router.get('/callback', async (req, res) => {
   const { code, state } = req.query;
 
-  if (!code || state !== req.session.spotifyState) {
+  console.log('Spotify callback - State from URL:', state);
+  console.log('Spotify callback - State from session:', req.session.spotifyState);
+  console.log('Spotify callback - Session ID:', req.sessionID);
+
+  if (!code) {
+    console.error('No code provided in callback');
+    return res.redirect(`${process.env.FRONTEND_URL}?error=no_code`);
+  }
+
+  if (state !== req.session.spotifyState) {
+    console.error('State mismatch - URL:', state, 'Session:', req.session.spotifyState);
     return res.redirect(`${process.env.FRONTEND_URL}?error=state_mismatch`);
   }
 

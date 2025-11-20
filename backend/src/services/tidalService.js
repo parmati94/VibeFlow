@@ -32,20 +32,37 @@ export async function createTidalPlaylist(name, description, accessToken) {
     const response = await axios.post(
       `${TIDAL_API_BASE}/v2/playlists`,
       {
-        name: name,
-        description: description || 'Synced from Spotify via Vibeflow'
+        data: {
+          type: 'playlists',
+          attributes: {
+            name: name,
+            description: description || 'Synced from Spotify via Vibeflow'
+          }
+        }
       },
       {
         headers: { 
           'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/vnd.api+json'
+        },
+        params: {
+          countryCode: 'US' // Required parameter
         }
       }
     );
 
     return response.data.data.id;
   } catch (error) {
-    console.error('Create Tidal playlist error:', error.response?.data || error.message);
+    console.error('Create Tidal playlist error:', JSON.stringify(error.response?.data, null, 2) || error.message);
+    console.error('Request body sent:', JSON.stringify({
+      data: {
+        type: 'playlists',
+        attributes: {
+          name: name,
+          description: description || 'Synced from Spotify via Vibeflow'
+        }
+      }
+    }, null, 2));
     throw error;
   }
 }
@@ -55,19 +72,20 @@ export async function createTidalPlaylist(name, description, accessToken) {
  */
 export async function searchTidalByISRC(isrc, accessToken) {
   try {
-    const response = await axios.get(`${TIDAL_API_BASE}/v2/searchResults/${isrc}`, {
+    const response = await axios.get(`${TIDAL_API_BASE}/v2/tracks`, {
       headers: { 'Authorization': `Bearer ${accessToken}` },
       params: { 
-        type: 'TRACKS',
-        limit: 1
+        'filter[isrc]': isrc,
+        countryCode: 'US'
       }
     });
 
-    if (response.data.data?.tracks?.length > 0) {
-      return response.data.data.tracks[0].id;
+    if (response.data.data && response.data.data.length > 0) {
+      return response.data.data[0].id;
     }
     return null;
   } catch (error) {
+    console.error('Tidal ISRC search error:', error.response?.status, error.response?.data);
     return null;
   }
 }
@@ -78,22 +96,25 @@ export async function searchTidalByISRC(isrc, accessToken) {
 export async function searchTidalByMetadata(trackName, artistNames, accessToken) {
   try {
     const query = `${trackName} ${artistNames.join(' ')}`;
-    const response = await axios.get(`${TIDAL_API_BASE}/v2/search`, {
+    const response = await axios.get(`${TIDAL_API_BASE}/v2/searchResults/${encodeURIComponent(query)}`, {
       headers: { 'Authorization': `Bearer ${accessToken}` },
       params: { 
-        query: query,
-        type: 'TRACKS',
-        limit: 5
+        countryCode: 'US',
+        include: 'tracks'
       }
     });
 
-    if (response.data.data?.tracks?.length > 0) {
-      // Try to find best match
-      const tracks = response.data.data.tracks;
+    // Navigate the response structure: data.relationships.tracks.data
+    const tracks = response.data.data?.relationships?.tracks?.data;
+    
+    if (tracks && tracks.length > 0) {
+      // Try to find best match by looking at included track details
+      const included = response.data.included || [];
+      const trackDetails = included.filter(item => item.type === 'tracks');
       
       // Exact name match first
-      const exactMatch = tracks.find(track => 
-        track.title.toLowerCase() === trackName.toLowerCase()
+      const exactMatch = trackDetails.find(track => 
+        track.attributes?.title?.toLowerCase() === trackName.toLowerCase()
       );
       
       if (exactMatch) return exactMatch.id;
@@ -103,7 +124,7 @@ export async function searchTidalByMetadata(trackName, artistNames, accessToken)
     }
     return null;
   } catch (error) {
-    console.error('Tidal search error:', error.response?.data || error.message);
+    console.error('Tidal search error:', error.response?.status, error.response?.data);
     return null;
   }
 }
@@ -118,15 +139,24 @@ export async function addTracksToTidalPlaylist(playlistId, trackIds, accessToken
     for (let i = 0; i < trackIds.length; i += chunkSize) {
       const chunk = trackIds.slice(i, i + chunkSize);
       
+      // Format tracks as JSON:API resource objects
+      const trackData = chunk.map(trackId => ({
+        id: trackId.toString(),
+        type: 'tracks'
+      }));
+      
       await axios.post(
-        `${TIDAL_API_BASE}/v2/playlists/${playlistId}/items`,
+        `${TIDAL_API_BASE}/v2/playlists/${playlistId}/relationships/items`,
         {
-          trackIds: chunk
+          data: trackData
         },
         {
           headers: { 
             'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/vnd.api+json'
+          },
+          params: {
+            countryCode: 'US'
           }
         }
       );
