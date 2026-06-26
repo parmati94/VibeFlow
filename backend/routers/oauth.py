@@ -26,7 +26,23 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 # ── Spotify ──────────────────────────────────────────────────────────────────
 @router.get("/spotify/login")
-def spotify_login(settings: Settings = Depends(get_settings)) -> RedirectResponse:
+def spotify_login(
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> RedirectResponse:
+    # Dev bypass: mint + persist tokens from a pre-captured refresh token (no browser, no
+    # registered redirect URI). Gated by DEV_AUTH; never reached in a real deploy.
+    if settings.spotify_dev_login:
+        try:
+            token_info = spotify_auth.refresh(settings.spotify_dev_refresh_token)
+            token_info.setdefault("refresh_token", settings.spotify_dev_refresh_token)
+            store.save_spotify(session, token_info)
+            logger.warning("DEV_AUTH: Spotify connected via refresh-token bypass.")
+            return RedirectResponse(url="/?connected=spotify")
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Dev Spotify login failed: %s", exc)
+            return RedirectResponse(url="/?error=spotify_dev_login_failed")
+
     if not settings.spotify_configured:
         return RedirectResponse(url="/?error=spotify_not_configured")
     return RedirectResponse(spotify_auth.login_url())

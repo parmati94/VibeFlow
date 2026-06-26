@@ -12,7 +12,7 @@
             <p class="text-sm font-medium truncate" x-text="run.playlist_name"></p>
             <p class="text-xs text-neutral-500">
               <span x-text="run.added"></span> added ·
-              <span x-text="run.matched_isrc + run.matched_meta"></span> matched ·
+              <span x-text="run.total - run.not_found"></span> matched ·
               <span x-text="run.not_found"></span> missed
             </p>
           </div>

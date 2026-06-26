@@ -27,11 +27,14 @@ def session_status(
     = tokens persisted in the DB (single-user, so this survives a fresh browser)."""
     return SessionResponse(
         spotify=ServiceState(
-            configured=settings.spotify_configured,
+            # In dev-bypass mode treat Spotify as configured even without client creds,
+            # since the refresh-token grant doesn't need the browser OAuth app.
+            configured=settings.spotify_configured or settings.spotify_dev_login,
             connected=store.is_connected(session, "spotify"),
         ),
         tidal=ServiceState(
             configured=settings.tidal_configured,
             connected=store.is_connected(session, "tidal"),
         ),
+        dev=settings.dev_auth,
     )

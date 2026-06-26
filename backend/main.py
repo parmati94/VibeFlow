@@ -28,6 +28,11 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     init_db()
     logger.info("VibeFlow starting up (db ready).")
+    if settings.dev_auth:
+        logger.warning(
+            "DEV_AUTH enabled — Spotify 'Connect' uses the refresh-token bypass, "
+            "not real OAuth. Never enable this in a real deploy."
+        )
     # Phase 4 will start the APScheduler here.
     yield
     logger.info("VibeFlow shutting down.")

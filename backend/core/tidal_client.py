@@ -7,6 +7,7 @@ limits (429) and transient 5xx, since recurring syncs amplify Tidal's rate limit
 
 from __future__ import annotations
 
+import re
 import time
 from urllib.parse import quote
 
@@ -19,6 +20,20 @@ TIDAL_API_BASE = "https://openapi.tidal.com"
 _JSON_API = "application/vnd.api+json"
 _MAX_RETRIES = 4
 _ADD_CHUNK = 20
+
+
+_ISO_DUR = re.compile(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?")
+
+
+def _iso8601_seconds(value: str | None) -> int | None:
+    """Parse Tidal's ISO-8601 track duration ('PT3M10S') to whole seconds."""
+    if not value:
+        return None
+    m = _ISO_DUR.fullmatch(value)
+    if not m:
+        return None
+    h, mins, secs = (int(x) if x else 0 for x in m.groups())
+    return h * 3600 + mins * 60 + secs
 
 
 class TidalError(Exception):
@@ -126,28 +141,52 @@ class TidalClient:
         data = resp.json().get("data") or []
         return str(data[0]["id"]) if data else None
 
-    def search_by_metadata(self, name: str, artists: list[str]) -> str | None:
-        query = quote(f"{name} {' '.join(artists)}")
+    def search_candidates(self, query: str, limit: int = 12) -> list[dict]:
+        """Return ranked candidate tracks for a free-text query, each with the fields the
+        matcher scores against: id, title, artists (names), duration (seconds), isrc.
+
+        Uses include=tracks.artists — the only include that returns per-candidate artist
+        names (plain `tracks` leaves artists empty). Order follows Tidal's own ranking.
+        """
         resp = self._request(
             "GET",
-            f"/v2/searchResults/{query}",
-            params={"include": "tracks"},
+            f"/v2/searchResults/{quote(query)}",
+            params={"include": "tracks.artists"},
             accept=_JSON_API,
         )
         if resp.status_code >= 400:
-            return None
+            return []
         body = resp.json()
-        rel = (((body.get("data") or {}).get("relationships") or {}).get("tracks") or {})
-        refs = rel.get("data") or []
-        if not refs:
-            return None
-        included = [x for x in body.get("included", []) if x.get("type") == "tracks"]
-        lname = name.lower()
-        for track in included:
-            if (track.get("attributes") or {}).get("title", "").lower() == lname:
-                return str(track["id"])
-        # Fall back to the first referenced track id.
-        return str(refs[0]["id"])
+        refs = (
+            (((body.get("data") or {}).get("relationships") or {}).get("tracks") or {})
+            .get("data")
+            or []
+        )
+        included = body.get("included", [])
+        tracks_by_id = {x["id"]: x for x in included if x.get("type") == "tracks"}
+        artist_name = {
+            x["id"]: (x.get("attributes") or {}).get("name", "")
+            for x in included
+            if x.get("type") == "artists"
+        }
+
+        out: list[dict] = []
+        for ref in refs[:limit]:
+            t = tracks_by_id.get(ref["id"])
+            if not t:
+                continue
+            attrs = t.get("attributes") or {}
+            art_refs = ((t.get("relationships") or {}).get("artists") or {}).get("data") or []
+            out.append(
+                {
+                    "id": str(t["id"]),
+                    "title": attrs.get("title", ""),
+                    "artists": [artist_name.get(a["id"], "") for a in art_refs],
+                    "duration": _iso8601_seconds(attrs.get("duration")),
+                    "isrc": attrs.get("isrc"),
+                }
+            )
+        return out
 
     def list_playlists(self) -> list[dict]:
         """Best-effort: the user's Tidal playlists (for picking a sync target)."""

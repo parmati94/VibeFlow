@@ -36,8 +36,11 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5570/auth/spotify/callback", alias="SPOTIFY_REDIRECT_URI"
     )
 
-    # --- Tidal (PKCE: client_id only, no secret) ---
+    # --- Tidal (PKCE) ---
     tidal_client_id: str | None = Field(None, alias="TIDAL_CLIENT_ID")
+    # Optional: only needed if the Tidal app is registered as confidential (then the token
+    # endpoint requires Basic auth). Public apps authenticate with PKCE alone.
+    tidal_client_secret: str | None = Field(None, alias="TIDAL_CLIENT_SECRET")
     tidal_redirect_uri: str = Field(
         "http://127.0.0.1:5570/auth/tidal/callback", alias="TIDAL_REDIRECT_URI"
     )
@@ -54,6 +57,20 @@ class Settings(BaseSettings):
 
     # --- Logging ---
     log_level: str = Field("INFO", alias="LOG_LEVEL")
+
+    # --- Dev auth bypass (NEVER enable in a real deploy) ---
+    # When on, the Spotify "Connect" seeds the session from a pre-captured refresh token
+    # instead of running the browser OAuth flow — so a headless box (or one whose redirect
+    # URI isn't registered) can authenticate. The refresh-token grant needs no redirect URI,
+    # so this works with any client_id/secret the token was minted under (e.g. reuse another
+    # app's). Defaults off.
+    dev_auth: bool = Field(False, alias="DEV_AUTH")
+    spotify_dev_refresh_token: str | None = Field(None, alias="SPOTIFY_DEV_REFRESH_TOKEN")
+
+    @property
+    def spotify_dev_login(self) -> bool:
+        """Dev Spotify bypass is usable: enabled and a refresh token is configured."""
+        return bool(self.dev_auth and self.spotify_dev_refresh_token)
 
     @property
     def spotify_configured(self) -> bool:

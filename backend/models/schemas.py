@@ -15,6 +15,7 @@ class ServiceState(BaseModel):
 class SessionResponse(BaseModel):
     spotify: ServiceState
     tidal: ServiceState
+    dev: bool = False
 
 
 class PlaylistSummary(BaseModel):
