@@ -55,7 +55,11 @@ def create_mapping(
         spotify_playlist_id=body.spotify_playlist_id,
         spotify_name=body.spotify_name,
         enabled=body.enabled,
-        interval_minutes=body.interval_minutes,
+        frequency=body.frequency,
+        at_hour=body.at_hour,
+        at_minute=body.at_minute,
+        day_of_week=body.day_of_week,
+        day_of_month=body.day_of_month,
     )
     session.add(mapping)
     session.commit()
@@ -71,10 +75,17 @@ def update_mapping(
     mapping = session.get(Mapping, mapping_id)
     if not mapping:
         raise HTTPException(status_code=404, detail="Mapping not found.")
-    if body.interval_minutes is not None:
-        mapping.interval_minutes = body.interval_minutes
     if body.enabled is not None:
         mapping.enabled = body.enabled
+    # A schedule edit always sends the full set; only overwrite when a frequency is provided
+    # (so an enable/disable-only PATCH doesn't wipe the schedule).
+    if body.frequency is not None:
+        mapping.frequency = body.frequency
+        mapping.at_hour = body.at_hour
+        mapping.at_minute = body.at_minute
+        mapping.day_of_week = body.day_of_week
+        mapping.day_of_month = body.day_of_month
+        mapping.interval_minutes = None  # migrated off the legacy interval
     session.add(mapping)
     session.commit()
     session.refresh(mapping)

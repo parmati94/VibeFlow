@@ -8,14 +8,14 @@
 
   <div class="grid sm:grid-cols-3 gap-4">
     <!-- Sync once -->
-    <button @click="setView('sync')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-6 hover:border-accent-500/50 transition">
+    <button @click="setView('sync')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-6 transition-all duration-200 hover:border-accent-500/50 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30">
       <div class="w-11 h-11 rounded-xl bg-accent-500/15 grid place-items-center text-accent-400 text-xl mb-4 group-hover:scale-105 transition">↻</div>
       <h3 class="font-semibold mb-1">Sync once</h3>
       <p class="text-xs text-neutral-500">Pick one or more playlists and copy them to Tidal right now.</p>
     </button>
 
     <!-- Scheduled -->
-    <button @click="setView('scheduled')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-6 hover:border-accent-500/50 transition">
+    <button @click="setView('scheduled')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-6 transition-all duration-200 hover:border-accent-500/50 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30">
       <div class="w-11 h-11 rounded-xl bg-accent-500/15 grid place-items-center text-accent-400 text-xl mb-4 group-hover:scale-105 transition">⏱</div>
       <h3 class="font-semibold mb-1">Scheduled syncs</h3>
       <p class="text-xs text-neutral-500">
@@ -25,7 +25,7 @@
     </button>
 
     <!-- History -->
-    <button @click="setView('history')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-6 hover:border-accent-500/50 transition">
+    <button @click="setView('history')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-6 transition-all duration-200 hover:border-accent-500/50 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30">
       <div class="w-11 h-11 rounded-xl bg-accent-500/15 grid place-items-center text-accent-400 text-xl mb-4 group-hover:scale-105 transition">≣</div>
       <h3 class="font-semibold mb-1">History</h3>
       <p class="text-xs text-neutral-500">

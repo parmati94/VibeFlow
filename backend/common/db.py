@@ -33,6 +33,26 @@ engine = create_engine(
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
+    _migrate()
+
+
+# Columns added to `mapping` after the table first shipped. SQLite create_all() only creates
+# missing tables, never new columns, so add them by hand (additive, non-destructive).
+_MAPPING_ADDS = {
+    "frequency": "VARCHAR",
+    "at_hour": "INTEGER",
+    "at_minute": "INTEGER DEFAULT 0",
+    "day_of_week": "INTEGER",
+    "day_of_month": "INTEGER",
+}
+
+
+def _migrate() -> None:
+    with engine.begin() as conn:
+        existing = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(mapping)")}
+        for col, ddl in _MAPPING_ADDS.items():
+            if col not in existing:
+                conn.exec_driver_sql(f"ALTER TABLE mapping ADD COLUMN {col} {ddl}")
 
 
 def get_session() -> Iterator[Session]:

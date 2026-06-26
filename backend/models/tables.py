@@ -38,7 +38,17 @@ class Mapping(SQLModel, table=True):
     tidal_playlist_id: str | None = None
     tidal_name: str | None = None
     enabled: bool = False
-    interval_minutes: int | None = None  # None = manual only
+    # Schedule: frequency + when. frequency ∈ hourly|daily|weekly|monthly.
+    #   hourly  → at_minute
+    #   daily   → at_hour:at_minute
+    #   weekly  → day_of_week (0=Mon) at at_hour:at_minute
+    #   monthly → day_of_month (1-28) at at_hour:at_minute
+    frequency: str | None = None
+    at_hour: int | None = None
+    at_minute: int = 0
+    day_of_week: int | None = None
+    day_of_month: int | None = None
+    interval_minutes: int | None = None  # legacy fixed-interval mappings (pre-cron)
     last_run_at: datetime | None = None
     created_at: datetime = Field(default_factory=_utcnow)
 
