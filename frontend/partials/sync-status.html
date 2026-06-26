@@ -1,0 +1,23 @@
+<!-- Live progress for queued/running syncs. -->
+<section x-show="activeRuns.length > 0" x-transition class="space-y-3">
+  <h3 class="text-sm font-semibold text-neutral-300 flex items-center gap-2">
+    <span class="w-2 h-2 rounded-full bg-accent-400 animate-pulse"></span>
+    Syncing now
+  </h3>
+  <template x-for="run in activeRuns" :key="run.id">
+    <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4">
+      <div class="flex items-center justify-between gap-3 mb-2">
+        <p class="text-sm font-medium truncate" x-text="run.playlist_name"></p>
+        <span class="text-xs text-neutral-500" x-text="run.total ? (run.processed + ' / ' + run.total) : 'preparing…'"></span>
+      </div>
+      <div class="h-1.5 rounded-full bg-neutral-800 overflow-hidden">
+        <div class="h-full bg-gradient-to-r from-accent-400 to-accent-600 transition-all duration-500" :style="`width: ${runPercent(run)}%`"></div>
+      </div>
+      <div class="mt-2 flex gap-3 text-[11px] text-neutral-500">
+        <span x-text="'ISRC ' + run.matched_isrc"></span>
+        <span x-text="'Search ' + run.matched_meta"></span>
+        <span x-text="'Missed ' + run.not_found"></span>
+      </div>
+    </div>
+  </template>
+</section>

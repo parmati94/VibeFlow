@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Accent theme palette. accent-* Tailwind utilities resolve to these vars (see
+   tailwind.config.js). Values are space-separated `R G B` triplets so Tailwind can apply
+   <alpha-value>. Default is a Tidal-leaning cyan; data-theme on <html> can swap it later. */
+:root,
+[data-theme='vibe'] {
+  --accent-50: 224 247 250;
+  --accent-100: 178 235 242;
+  --accent-200: 128 222 234;
+  --accent-300: 77 208 225;
+  --accent-400: 38 198 218;
+  --accent-500: 0 188 212;
+  --accent-600: 0 172 193;
+  --accent-700: 0 151 167;
+  --accent-800: 0 131 143;
+  --accent-900: 0 96 100;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-neutral-950 text-neutral-100 antialiased;
+}
+
+[x-cloak] {
+  display: none !important;
+}

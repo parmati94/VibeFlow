@@ -1,13 +1,29 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vibeflow - Spotify to Tidal Sync</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+{{> head }}
+{{> header }}
+
+<main class="flex-1 container mx-auto max-w-5xl px-4 py-8 pb-28">
+  <!-- Boot probe -->
+  <div x-show="booting" class="grid place-items-center py-24">
+    <div class="w-7 h-7 rounded-full border-2 border-neutral-700 border-t-accent-400 animate-spin"></div>
+  </div>
+
+  <!-- Backend unreachable -->
+  <div x-show="!booting && health === 'error'" class="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+    Can't reach the VibeFlow backend. Check that the service is running.
+  </div>
+
+  <!-- Not connected: auth gate -->
+  <div x-show="!booting && health === 'ok' && !bothConnected">
+    {{> auth-gate }}
+  </div>
+
+  <!-- Connected: dashboard -->
+  <div x-show="!booting && health === 'ok' && bothConnected" class="space-y-8">
+    {{> sync-status }}
+    {{> playlist-browser }}
+    {{> history }}
+  </div>
+</main>
+
+{{> toast }}
+{{> footer }}

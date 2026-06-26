@@ -1,0 +1,31 @@
+name: vibeflow
+services:
+  vibeflow:
+    # Prebuilt image from CI. Build from source via docker-compose.dev.yml.
+    image: parmati/vibeflow:latest
+    container_name: vibeflow
+    ports:
+      - "5570:80"
+    # Secrets live in ./.env at the project root (gitignored); see .env.example.
+    env_file:
+      - ./.env   # SPOTIFY_CLIENT_ID/SECRET, TIDAL_CLIENT_ID, SESSION_SECRET
+    environment:
+      - TZ=America/New_York
+      # Must EXACTLY match the Redirect URIs registered on the Spotify + Tidal apps AND
+      # the public origin this container is served from. Spotify forbids "localhost" —
+      # use the loopback IP literal, or an HTTPS origin behind a reverse proxy.
+      - SPOTIFY_REDIRECT_URI=http://127.0.0.1:5570/auth/spotify/callback
+      - TIDAL_REDIRECT_URI=http://127.0.0.1:5570/auth/tidal/callback
+      - LOG_LEVEL=INFO
+    volumes:
+      - vibeflow-data:/app/data   # SQLite: credentials, mappings, run history, match cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  vibeflow-data:

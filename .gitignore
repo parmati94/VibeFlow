@@ -3,6 +3,16 @@ node_modules/
 .pnp
 .pnp.js
 
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+backend/common/logs/
+
+# Local data (SQLite)
+data/
+
 # Environment variables
 .env
 .env.local
@@ -39,3 +49,15 @@ Thumbs.db
 # Session data
 *.db
 *.sqlite
+
+# Planning / scratch (local only)
+PLANNING.md
+
+# Personal deploy config (per-box; not shared)
+docker-compose.local.yml
+
+# Local credential files (never commit)
+.dockerhub-credentials
+.dockerhub-token
+*.token
+.*-api
