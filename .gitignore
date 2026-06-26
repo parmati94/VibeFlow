@@ -52,3 +52,12 @@ Thumbs.db
 
 # Planning / scratch (local only)
 PLANNING.md
+
+# Personal deploy config (per-box; not shared)
+docker-compose.local.yml
+
+# Local credential files (never commit)
+.dockerhub-credentials
+.dockerhub-token
+*.token
+.*-api
