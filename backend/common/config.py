@@ -46,10 +46,6 @@ class Settings(BaseSettings):
 
     # --- Sessions ---
     session_secret: str = Field("dev-secret-change-me", alias="SESSION_SECRET")
-    # Mark the session cookie Secure (HTTPS-only). Enable when served behind TLS (the
-    # real-domain deploy); leave off for plain-http loopback/LAN dev or the cookie won't
-    # be sent and login silently fails.
-    session_https_only: bool = Field(False, alias="SESSION_HTTPS_ONLY")
 
     # --- Storage ---
     # SQLite file holding credentials, mappings, run history, match cache. Volume-mounted

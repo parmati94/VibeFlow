@@ -37,8 +37,7 @@ app = FastAPI(title="VibeFlow", lifespan=lifespan)
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.session_secret,
-    https_only=settings.session_https_only,  # Secure cookie when served behind TLS
-    same_site="lax",  # allows the cookie to ride the OAuth redirect back to us
+    https_only=False,  # cookie works over HTTPS without Secure; set True to harden
 )
 
 app.include_router(system.router)
