@@ -16,6 +16,8 @@ services:
       # use the loopback IP literal, or an HTTPS origin behind a reverse proxy.
       - SPOTIFY_REDIRECT_URI=http://127.0.0.1:5570/auth/spotify/callback
       - TIDAL_REDIRECT_URI=http://127.0.0.1:5570/auth/tidal/callback
+      # Set true when this container is served behind TLS (recommended for real use).
+      - SESSION_HTTPS_ONLY=false
       - LOG_LEVEL=INFO
     volumes:
       - vibeflow-data:/app/data   # SQLite: credentials, mappings, run history, match cache

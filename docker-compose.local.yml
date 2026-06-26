@@ -18,6 +18,8 @@ services:
       # Real public origin (HTTPS). Register these in the Spotify + Tidal app dashboards.
       - SPOTIFY_REDIRECT_URI=https://vibeflow.parmati.me/auth/spotify/callback
       - TIDAL_REDIRECT_URI=https://vibeflow.parmati.me/auth/tidal/callback
+      # Served behind TLS (Caddy/Cloudflare) → Secure session cookie.
+      - SESSION_HTTPS_ONLY=true
       - LOG_LEVEL=INFO
     volumes:
       - ./backend:/app/backend                          # backend live-reload via uvicorn --reload
