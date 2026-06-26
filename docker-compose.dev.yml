@@ -1,0 +1,38 @@
+name: vibeflow-dev
+# Dev with hot reload. Builds locally with DEV_MODE=true (uvicorn --reload) and bind-mounts
+# the backend source so edits to backend/ restart the API automatically. The frontend is the
+# host-built dist/ mounted into nginx — rebuild it when you change the UI:
+#   cd frontend && npm install && npm run build   (add `-- --watch` to rebuild continuously)
+services:
+  vibeflow:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DEV_MODE=true
+    image: vibeflow:dev
+    container_name: vibeflow-dev
+    ports:
+      - "5571:80"
+    env_file:
+      - ./.env
+    environment:
+      - TZ=America/New_York
+      - SPOTIFY_REDIRECT_URI=http://127.0.0.1:5571/auth/spotify/callback
+      - TIDAL_REDIRECT_URI=http://127.0.0.1:5571/auth/tidal/callback
+      - LOG_LEVEL=DEBUG
+    volumes:
+      - ./backend:/app/backend                          # backend live-reload via uvicorn --reload
+      - ./frontend/dist:/usr/share/nginx/html           # host-built frontend
+      - ./supervisor/supervisord.dev.conf:/etc/supervisor/conf.d/supervisord.conf:ro
+      - vibeflow-dev-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  vibeflow-dev-data:

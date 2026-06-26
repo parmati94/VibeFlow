@@ -39,3 +39,6 @@ Thumbs.db
 # Session data
 *.db
 *.sqlite
+
+# Planning / scratch (local only)
+PLANNING.md
