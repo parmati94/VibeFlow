@@ -5,12 +5,14 @@ import { mappings } from './mappings.js';
 import { nav } from './nav.js';
 import { playlists } from './playlists.js';
 import { sync } from './sync.js';
+import { theme } from './theme.js';
 import { toast } from './toast.js';
 
 document.addEventListener('alpine:init', () => {
   Alpine.data('app', () => ({
     // Feature modules spread in so the markup sees one flat component.
     ...toast(),
+    ...theme(),
     ...nav(),
     ...connection(),
     ...playlists(),
@@ -38,6 +40,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     async init() {
+      this.initTheme();
       this.handleAuthRedirect();
 
       // App login gate: bounce to the login page if required and not signed in.

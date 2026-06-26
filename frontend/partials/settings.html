@@ -1,0 +1,52 @@
+<!-- Settings slide-over (theme picker). -->
+<div
+  x-show="showSettings"
+  x-transition:leave="duration-200"
+  @keydown.escape.window="showSettings = false"
+  class="fixed inset-0 z-[100] flex justify-end"
+  style="display:none"
+>
+  <div
+    x-show="showSettings"
+    x-transition:enter="transition-opacity ease-out duration-200"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition-opacity ease-in duration-200"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+    @click="showSettings = false"
+  ></div>
+
+  <aside
+    x-show="showSettings"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="translate-x-full"
+    x-transition:enter-end="translate-x-0"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="translate-x-0"
+    x-transition:leave-end="translate-x-full"
+    class="relative w-full max-w-xs h-full bg-neutral-900 border-l border-neutral-800 shadow-2xl p-6 overflow-y-auto"
+  >
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-lg font-semibold">Settings</h2>
+      <button @click="showSettings = false" aria-label="Close" class="grid place-items-center w-8 h-8 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800">✕</button>
+    </div>
+
+    <h3 class="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-3">Accent theme</h3>
+    <div class="grid grid-cols-6 gap-2.5">
+      <template x-for="t in themes" :key="t.id">
+        <button
+          @click="applyTheme(t.id)"
+          :title="t.label"
+          class="aspect-square rounded-xl border-2 grid place-items-center transition-all"
+          :class="theme === t.id ? 'border-white scale-105' : 'border-transparent hover:border-neutral-600'"
+          :style="`background-color: ${t.swatch}`"
+        >
+          <svg x-show="theme === t.id" class="w-4 h-4 text-neutral-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+        </button>
+      </template>
+    </div>
+    <p class="text-xs text-neutral-500 mt-3">Re-tints the whole app. Saved on this device.</p>
+  </aside>
+</div>

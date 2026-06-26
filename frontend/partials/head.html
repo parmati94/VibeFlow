@@ -8,3 +8,8 @@
     <script type="module" src="/js/app.js"></script>
   </head>
   <body x-data="app" x-cloak class="min-h-full flex flex-col">
+    <!-- Subtle accent bloom behind everything (re-tints with the active theme). -->
+    <div
+      class="pointer-events-none fixed inset-0 -z-10"
+      style="background: radial-gradient(55rem 40rem at 50% -12%, rgb(var(--accent-500) / 0.08), transparent 60%);"
+    ></div>
