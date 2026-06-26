@@ -56,3 +56,29 @@ class SyncRunView(BaseModel):
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class MappingCreate(BaseModel):
+    spotify_playlist_id: str
+    spotify_name: str
+    interval_minutes: int | None = None
+    enabled: bool = True
+
+
+class MappingUpdate(BaseModel):
+    interval_minutes: int | None = None
+    enabled: bool | None = None
+
+
+class MappingView(BaseModel):
+    id: int
+    spotify_playlist_id: str
+    spotify_name: str
+    tidal_playlist_id: str | None
+    tidal_name: str | None
+    enabled: bool
+    interval_minutes: int | None
+    last_run_at: datetime | None
+    last_status: str | None = None
+    next_run_at: datetime | None = None
+    created_at: datetime

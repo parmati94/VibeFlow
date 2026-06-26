@@ -84,7 +84,11 @@ def valid_spotify_token(session: Session) -> str | None:
     if not cred.refresh_token:
         return cred.access_token
     logger.info("Spotify token expired; refreshing.")
-    token_info = spotify_auth.refresh(cred.refresh_token)
+    try:
+        token_info = spotify_auth.refresh(cred.refresh_token)
+    except Exception as exc:  # noqa: BLE001
+        _handle_refresh_failure(session, "spotify", exc)
+        return None
     # spotipy omits refresh_token from some refresh responses; keep the old one.
     token_info.setdefault("refresh_token", cred.refresh_token)
     save_spotify(session, token_info)
@@ -100,7 +104,32 @@ def valid_tidal_token(session: Session) -> str | None:
     if not cred.refresh_token:
         return cred.access_token
     logger.info("Tidal token expired; refreshing.")
-    token = tidal_auth.refresh(cred.refresh_token)
+    try:
+        token = tidal_auth.refresh(cred.refresh_token)
+    except Exception as exc:  # noqa: BLE001
+        _handle_refresh_failure(session, "tidal", exc)
+        return None
     token.setdefault("refresh_token", cred.refresh_token)
     save_tidal(session, token, extra=cred.extra)
     return token["access_token"]
+
+
+def _handle_refresh_failure(session: Session, provider: str, exc: Exception) -> None:
+    """A refresh that fails with a real auth error (the refresh token was revoked) means the
+    user must reconnect — so we disconnect that provider, which the UI surfaces as a
+    reconnect prompt. A transient/network error keeps the credentials for the next attempt.
+    """
+    import httpx
+
+    auth_failure = "invalid_grant" in str(exc).lower() or (
+        isinstance(exc, httpx.HTTPStatusError)
+        and exc.response.status_code in (400, 401)
+    )
+    if auth_failure:
+        logger.warning(
+            "%s refresh token rejected (revoked?) — disconnecting; user must reconnect.",
+            provider.title(),
+        )
+        disconnect(session, provider)
+    else:
+        logger.error("%s token refresh failed (transient): %s", provider.title(), exc)

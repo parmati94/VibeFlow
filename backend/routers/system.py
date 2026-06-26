@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
 from backend.auth import store
+from backend.common.auth import require_auth
 from backend.common.config import Settings, get_settings
 from backend.deps import get_session
 from backend.models.schemas import ServiceState, SessionResponse
@@ -22,6 +23,7 @@ def health() -> dict:
 def session_status(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
+    _user: str = Depends(require_auth),
 ) -> SessionResponse:
     """Per-service state for the UI. `configured` = credentials present in env; `connected`
     = tokens persisted in the DB (single-user, so this survives a fresh browser)."""

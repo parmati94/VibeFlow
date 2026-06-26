@@ -27,4 +27,15 @@ export const api = {
   activeRuns: () => request('/api/sync/active'),
   recentRuns: (limit = 20) => request(`/api/sync/runs?limit=${limit}`),
   disconnect: (provider) => request(`/auth/${provider}/logout`, { method: 'POST' }),
+
+  // App login gate
+  authStatus: () => request('/api/auth/status'),
+  logout: () => request('/api/auth/logout', { method: 'POST' }),
+
+  // Scheduled-sync mappings
+  listMappings: () => request('/api/mappings'),
+  createMapping: (body) => request('/api/mappings', { method: 'POST', body: JSON.stringify(body) }),
+  updateMapping: (id, body) => request(`/api/mappings/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+  deleteMapping: (id) => request(`/api/mappings/${id}`, { method: 'DELETE' }),
+  runMapping: (id) => request(`/api/mappings/${id}/run`, { method: 'POST' }),
 };

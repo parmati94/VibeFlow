@@ -8,14 +8,14 @@ services:
       - "5570:80"
     # Secrets live in ./.env at the project root (gitignored); see .env.example.
     env_file:
-      - ./.env   # SPOTIFY_CLIENT_ID/SECRET, TIDAL_CLIENT_ID, SESSION_SECRET
+      - ./.env   # SPOTIFY_CLIENT_ID/SECRET, TIDAL_CLIENT_ID, SESSION_SECRET, USERNAME, PASSWORD
     environment:
       - TZ=America/New_York
-      # Must EXACTLY match the Redirect URIs registered on the Spotify + Tidal apps AND
-      # the public origin this container is served from. Spotify forbids "localhost" —
-      # use the loopback IP literal, or an HTTPS origin behind a reverse proxy.
+      # Must match the Redirect URIs registered on the Spotify + Tidal apps and this origin.
       - SPOTIFY_REDIRECT_URI=http://127.0.0.1:5570/auth/spotify/callback
       - TIDAL_REDIRECT_URI=http://127.0.0.1:5570/auth/tidal/callback
+      # Login gate — recommended on a public origin (set USERNAME/PASSWORD in .env).
+      - ENABLE_LOGIN=false
       - LOG_LEVEL=INFO
     volumes:
       - vibeflow-data:/app/data   # SQLite: credentials, mappings, run history, match cache

@@ -6,12 +6,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from backend.auth import store
+from backend.common.auth import require_auth
 from backend.core.spotify_client import SpotifyClient
 from backend.core.tidal_client import TidalClient
 from backend.deps import get_session
 from backend.models.schemas import PlaylistSummary
 
-router = APIRouter(prefix="/api/playlists", tags=["playlists"])
+router = APIRouter(prefix="/api/playlists", tags=["playlists"], dependencies=[Depends(require_auth)])
 
 
 @router.get("/spotify", response_model=list[PlaylistSummary])
