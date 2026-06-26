@@ -3,6 +3,16 @@ node_modules/
 .pnp
 .pnp.js
 
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+backend/common/logs/
+
+# Local data (SQLite)
+data/
+
 # Environment variables
 .env
 .env.local

@@ -20,7 +20,10 @@ services:
       - TIDAL_REDIRECT_URI=https://vibeflow.parmati.me/auth/tidal/callback
       - LOG_LEVEL=INFO
     volumes:
-      - vibeflow-local-data:/app/data
+      - ./backend:/app/backend                          # backend live-reload via uvicorn --reload
+      - ./frontend/dist:/usr/share/nginx/html           # host-built frontend
+      - ./supervisor/supervisord.dev.conf:/etc/supervisor/conf.d/supervisord.conf:ro
+      - vibeflow-dev-data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
@@ -30,4 +33,4 @@ services:
       start_period: 15s
 
 volumes:
-  vibeflow-local-data:
+  vibeflow-dev-data:

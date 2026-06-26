@@ -1,0 +1,41 @@
+<!-- Recent sync runs with stats; expand to see unmatched tracks. -->
+<section x-show="history.length > 0" class="space-y-3" x-data="{ open: null }">
+  <h3 class="text-sm font-semibold text-neutral-300">Recent syncs</h3>
+  <div class="rounded-xl border border-neutral-800 overflow-hidden divide-y divide-neutral-800">
+    <template x-for="run in history" :key="run.id">
+      <div class="bg-neutral-900/40">
+        <button
+          @click="open === run.id ? open = null : open = run.id"
+          class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-neutral-900/80 transition"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium truncate" x-text="run.playlist_name"></p>
+            <p class="text-xs text-neutral-500">
+              <span x-text="run.added"></span> added ·
+              <span x-text="run.matched_isrc + run.matched_meta"></span> matched ·
+              <span x-text="run.not_found"></span> missed
+            </p>
+          </div>
+          <span class="text-[11px] px-2 py-0.5 rounded-full capitalize shrink-0" :class="statusClass(run.status)" x-text="run.status"></span>
+          <span class="text-neutral-600 text-xs transition-transform" :class="open === run.id ? 'rotate-90' : ''" x-show="run.unmatched.length || run.error">›</span>
+        </button>
+        <div x-show="open === run.id" x-transition class="px-4 pb-3">
+          <template x-if="run.error">
+            <p class="text-xs text-red-300 bg-red-500/10 rounded-lg p-2" x-text="run.error"></p>
+          </template>
+          <template x-if="run.unmatched.length">
+            <div class="space-y-1 max-h-48 overflow-auto">
+              <p class="text-[11px] uppercase tracking-wide text-neutral-600 mb-1">Not found on Tidal</p>
+              <template x-for="(t, i) in run.unmatched" :key="i">
+                <p class="text-xs text-neutral-400 truncate">
+                  <span x-text="t.name"></span>
+                  <span class="text-neutral-600"> — <span x-text="t.artists.join(', ')"></span></span>
+                </p>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+  </div>
+</section>

@@ -1,11 +1,29 @@
-<header class="border-b border-neutral-800">
-  <div class="container mx-auto max-w-5xl px-4 py-5 flex items-center gap-3">
-    <div class="w-9 h-9 rounded-lg bg-accent-500/15 grid place-items-center text-accent-400 font-bold">
+<header class="sticky top-0 z-20 border-b border-neutral-800/80 bg-neutral-950/80 backdrop-blur">
+  <div class="container mx-auto max-w-5xl px-4 py-3.5 flex items-center gap-3">
+    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-400 to-accent-600 grid place-items-center text-neutral-950 font-black shadow-lg shadow-accent-500/20">
       VF
     </div>
-    <div>
-      <h1 class="text-lg font-semibold leading-tight">VibeFlow</h1>
-      <p class="text-xs text-neutral-400">Sync playlists from Spotify to Tidal</p>
+    <div class="mr-auto">
+      <h1 class="text-base font-semibold leading-tight tracking-tight">VibeFlow</h1>
+      <p class="text-[11px] text-neutral-500 leading-tight">Spotify → Tidal playlist sync</p>
+    </div>
+
+    <!-- Connection pills -->
+    <div class="flex items-center gap-2" x-show="!booting">
+      <template x-for="svc in ['spotify', 'tidal']" :key="svc">
+        <button
+          @click="session[svc].connected ? disconnect(svc) : connect(svc)"
+          class="group flex items-center gap-1.5 rounded-full border border-neutral-800 bg-neutral-900/60 px-2.5 py-1 text-xs hover:border-neutral-700 transition"
+          :title="session[svc].connected ? 'Disconnect ' + svc : 'Connect ' + svc"
+        >
+          <span
+            class="w-1.5 h-1.5 rounded-full"
+            :class="session[svc].connected ? (svc === 'spotify' ? 'bg-emerald-400' : 'bg-accent-400') : 'bg-neutral-600'"
+          ></span>
+          <span class="capitalize text-neutral-300" x-text="svc"></span>
+          <span class="text-neutral-600 group-hover:text-neutral-400" x-show="session[svc].connected">✕</span>
+        </button>
+      </template>
     </div>
   </div>
 </header>

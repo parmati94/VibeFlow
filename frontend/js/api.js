@@ -7,7 +7,13 @@ async function request(path, options = {}) {
     ...options,
   });
   if (!res.ok) {
-    throw new Error(`${options.method || 'GET'} ${path} → ${res.status}`);
+    let detail = `${res.status}`;
+    try {
+      detail = (await res.json()).detail || detail;
+    } catch (e) {
+      /* non-JSON error body */
+    }
+    throw new Error(detail);
   }
   return res.status === 204 ? null : res.json();
 }
@@ -15,4 +21,10 @@ async function request(path, options = {}) {
 export const api = {
   health: () => request('/api/health'),
   session: () => request('/api/session'),
+  spotifyPlaylists: () => request('/api/playlists/spotify'),
+  startSync: (playlistIds) =>
+    request('/api/sync', { method: 'POST', body: JSON.stringify({ playlist_ids: playlistIds }) }),
+  activeRuns: () => request('/api/sync/active'),
+  recentRuns: (limit = 20) => request(`/api/sync/runs?limit=${limit}`),
+  disconnect: (provider) => request(`/auth/${provider}/logout`, { method: 'POST' }),
 };

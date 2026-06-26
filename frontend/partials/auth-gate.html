@@ -1,0 +1,66 @@
+<!-- Shown until both services are connected. -->
+<section class="py-10">
+  <div class="text-center max-w-xl mx-auto mb-10">
+    <div class="inline-flex items-center gap-2 rounded-full border border-neutral-800 bg-neutral-900/60 px-3 py-1 text-xs text-neutral-400 mb-5">
+      <span class="w-1.5 h-1.5 rounded-full bg-accent-400 animate-pulse"></span>
+      Connect both services to begin
+    </div>
+    <h2 class="text-3xl sm:text-4xl font-bold tracking-tight bg-gradient-to-b from-white to-neutral-400 bg-clip-text text-transparent">
+      Move your music to Tidal
+    </h2>
+    <p class="mt-3 text-neutral-400">
+      Link Spotify and Tidal, then sync any playlist — matched track-for-track by ISRC,
+      with smart fallback search.
+    </p>
+  </div>
+
+  <div class="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+    <!-- Spotify card -->
+    <div class="rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-6 flex flex-col">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-11 h-11 rounded-xl bg-emerald-500/15 grid place-items-center text-emerald-400 text-xl font-bold">♫</div>
+        <div>
+          <h3 class="font-semibold">Spotify</h3>
+          <p class="text-xs text-neutral-500">Source library</p>
+        </div>
+      </div>
+      <template x-if="session.spotify.connected">
+        <p class="text-sm text-emerald-300 mb-4 flex items-center gap-1.5"><span>✓</span> Connected</p>
+      </template>
+      <template x-if="!session.spotify.connected">
+        <p class="text-sm text-neutral-400 mb-4" x-text="session.spotify.configured ? 'Authorize access to your playlists.' : 'Not configured on the server.'"></p>
+      </template>
+      <button
+        class="mt-auto rounded-xl px-4 py-2.5 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+        :class="session.spotify.connected ? 'border border-neutral-700 text-neutral-300 hover:bg-neutral-800' : 'bg-emerald-500 text-neutral-950 hover:bg-emerald-400'"
+        :disabled="!session.spotify.configured"
+        @click="session.spotify.connected ? disconnect('spotify') : connect('spotify')"
+        x-text="session.spotify.connected ? 'Disconnect' : 'Connect Spotify'"
+      ></button>
+    </div>
+
+    <!-- Tidal card -->
+    <div class="rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-6 flex flex-col">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-11 h-11 rounded-xl bg-accent-500/15 grid place-items-center text-accent-400 text-xl font-bold">≋</div>
+        <div>
+          <h3 class="font-semibold">Tidal</h3>
+          <p class="text-xs text-neutral-500">Destination</p>
+        </div>
+      </div>
+      <template x-if="session.tidal.connected">
+        <p class="text-sm text-accent-300 mb-4 flex items-center gap-1.5"><span>✓</span> Connected</p>
+      </template>
+      <template x-if="!session.tidal.connected">
+        <p class="text-sm text-neutral-400 mb-4" x-text="session.tidal.configured ? 'Authorize playlist access.' : 'Not configured on the server.'"></p>
+      </template>
+      <button
+        class="mt-auto rounded-xl px-4 py-2.5 text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+        :class="session.tidal.connected ? 'border border-neutral-700 text-neutral-300 hover:bg-neutral-800' : 'bg-accent-500 text-neutral-950 hover:bg-accent-400'"
+        :disabled="!session.tidal.configured"
+        @click="session.tidal.connected ? disconnect('tidal') : connect('tidal')"
+        x-text="session.tidal.connected ? 'Disconnect' : 'Connect Tidal'"
+      ></button>
+    </div>
+  </div>
+</section>

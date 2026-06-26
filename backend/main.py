@@ -1,15 +1,12 @@
 """FastAPI application entry point.
 
-Creates the app, wires session middleware, and includes the routers. Business logic lives
-in `core/`; OAuth/token handling in `auth/`; route handlers in `routers/` stay thin. Run
-with `uvicorn backend.main:app`.
+Creates the app, wires session middleware, initializes the DB, and includes the routers.
+Business logic lives in `core/`; OAuth/token handling in `auth/`; route handlers in
+`routers/` stay thin. Run with `uvicorn backend.main:app`.
 
-URL scheme (same-origin behind nginx in production):
+URL scheme (same-origin behind nginx):
   /auth/spotify/*, /auth/tidal/*   OAuth round-trips (proxied as-is)
   /api/*                           JSON endpoints called by the frontend
-
-Phase 0: only system routes are mounted. Later phases add oauth, playlists, sync,
-schedules, and start the APScheduler in the lifespan.
 """
 
 from __future__ import annotations
@@ -20,16 +17,18 @@ from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 
 from backend.common.config import get_settings
+from backend.common.db import init_db
 from backend.common.logging_config import logger
-from backend.routers import system
+from backend.routers import oauth, playlists, sync, system
 
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Phase 4 will start/stop the APScheduler here.
-    logger.info("VibeFlow starting up.")
+    init_db()
+    logger.info("VibeFlow starting up (db ready).")
+    # Phase 4 will start the APScheduler here.
     yield
     logger.info("VibeFlow shutting down.")
 
@@ -42,6 +41,9 @@ app.add_middleware(
 )
 
 app.include_router(system.router)
+app.include_router(oauth.router)
+app.include_router(playlists.router)
+app.include_router(sync.router)
 
 
 if __name__ == "__main__":

@@ -1,15 +1,14 @@
-"""Health + session/connection-status endpoints.
-
-Thin handlers under /api. In Phase 0 the connection states are stubbed False; Phase 1
-wires them to the persisted Spotify/Tidal credentials. nginx has a separate /healthz for
-container liveness — this /api/health proves the backend itself is up through the proxy.
-"""
+"""Health + session/connection-status endpoints."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
+from sqlmodel import Session
 
+from backend.auth import store
 from backend.common.config import Settings, get_settings
+from backend.deps import get_session
+from backend.models.schemas import ServiceState, SessionResponse
 
 router = APIRouter(prefix="/api", tags=["system"])
 
@@ -19,19 +18,20 @@ def health() -> dict:
     return {"status": "ok", "service": "vibeflow"}
 
 
-@router.get("/session")
+@router.get("/session", response_model=SessionResponse)
 def session_status(
-    request: Request, settings: Settings = Depends(get_settings)
-) -> dict:
-    """Per-service connection state for the UI auth-gate. Stubbed in Phase 0; Phase 1
-    reports whether valid Spotify/Tidal credentials are persisted."""
-    return {
-        "spotify": {
-            "configured": settings.spotify_configured,
-            "connected": bool(request.session.get("spotify_connected")),
-        },
-        "tidal": {
-            "configured": settings.tidal_configured,
-            "connected": bool(request.session.get("tidal_connected")),
-        },
-    }
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> SessionResponse:
+    """Per-service state for the UI. `configured` = credentials present in env; `connected`
+    = tokens persisted in the DB (single-user, so this survives a fresh browser)."""
+    return SessionResponse(
+        spotify=ServiceState(
+            configured=settings.spotify_configured,
+            connected=store.is_connected(session, "spotify"),
+        ),
+        tidal=ServiceState(
+            configured=settings.tidal_configured,
+            connected=store.is_connected(session, "tidal"),
+        ),
+    )

@@ -1,0 +1,15 @@
+<!-- Global action-result banner. -->
+<div
+  x-show="toastState"
+  x-transition.opacity.duration.300ms
+  class="fixed bottom-4 right-4 z-50 max-w-sm"
+  @click="dismissToast()"
+>
+  <div
+    class="flex items-start gap-3 rounded-xl border px-4 py-3 shadow-xl cursor-pointer backdrop-blur"
+    :class="toastState?.ok ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'"
+  >
+    <span class="text-sm" x-text="toastState?.ok ? '✓' : '✕'"></span>
+    <p class="text-sm" x-text="toastState?.message"></p>
+  </div>
+</div>
