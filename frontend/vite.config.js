@@ -19,5 +19,11 @@ export default defineConfig({
     emptyOutDir: true,
     minify: 'esbuild',
     sourcemap: false,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        login: resolve(__dirname, 'login.html'),
+      },
+    },
   },
 });

@@ -1,0 +1,102 @@
+<section class="space-y-5">
+  <div class="flex items-center justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-semibold">Scheduled syncs</h2>
+      <p class="text-xs text-neutral-500">Playlists kept in sync automatically. Only new tracks are added each run.</p>
+    </div>
+    <button
+      @click="showAddMapping = !showAddMapping"
+      class="rounded-xl bg-accent-500 hover:bg-accent-400 text-neutral-950 font-medium text-sm px-4 py-2 transition"
+      x-text="showAddMapping ? 'Cancel' : '+ New'"
+    ></button>
+  </div>
+
+  <!-- Add form -->
+  <div x-show="showAddMapping" x-transition class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-4 space-y-3">
+    <div class="grid sm:grid-cols-2 gap-3">
+      <div>
+        <label class="text-xs text-neutral-500 mb-1 block">Playlist</label>
+        <select x-model="newMapping.spotify_playlist_id" class="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm focus:border-accent-500/60 focus:outline-none">
+          <option value="">Select a playlist…</option>
+          <template x-for="pl in playlists" :key="pl.id">
+            <option :value="pl.id" x-text="`${pl.name} (${pl.track_count})`"></option>
+          </template>
+        </select>
+      </div>
+      <div>
+        <label class="text-xs text-neutral-500 mb-1 block">Frequency</label>
+        <select x-model="newMapping.interval_minutes" class="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm focus:border-accent-500/60 focus:outline-none">
+          <template x-for="opt in intervalOptions" :key="opt.minutes">
+            <option :value="opt.minutes" x-text="opt.label"></option>
+          </template>
+        </select>
+      </div>
+    </div>
+    <button @click="createMapping()" class="rounded-lg bg-accent-500 hover:bg-accent-400 text-neutral-950 font-medium text-sm px-4 py-2 transition">
+      Create scheduled sync
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div x-show="mappingsLoading" class="text-sm text-neutral-500 py-6 text-center">Loading…</div>
+
+  <!-- Empty -->
+  <div x-show="!mappingsLoading && mappings.length === 0 && !showAddMapping" class="rounded-xl border border-dashed border-neutral-800 p-8 text-center">
+    <p class="text-sm text-neutral-400">No scheduled syncs yet.</p>
+    <p class="text-xs text-neutral-600 mt-1">Click "+ New" to keep a playlist in sync automatically.</p>
+  </div>
+
+  <!-- List -->
+  <div class="space-y-3">
+    <template x-for="m in mappings" :key="m.id">
+      <div class="rounded-xl border border-neutral-800 bg-neutral-900/40 p-4">
+        <div class="flex items-start gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <p class="font-medium truncate" x-text="m.spotify_name"></p>
+              <span
+                x-show="m.last_status"
+                class="text-[10px] px-1.5 py-0.5 rounded-full capitalize shrink-0"
+                :class="statusClass(m.last_status)"
+                x-text="m.last_status"
+              ></span>
+            </div>
+            <p class="text-xs text-neutral-500 mt-0.5">
+              <span x-text="intervalLabel(m.interval_minutes)"></span>
+              · next <span x-text="m.enabled ? formatWhen(m.next_run_at) : 'paused'"></span>
+              · last <span x-text="formatWhen(m.last_run_at)"></span>
+            </p>
+          </div>
+
+          <!-- Enable toggle -->
+          <button
+            @click="toggleMapping(m)"
+            class="relative w-9 h-5 rounded-full transition shrink-0"
+            :class="m.enabled ? 'bg-accent-500' : 'bg-neutral-700'"
+            :title="m.enabled ? 'Pause' : 'Resume'"
+          >
+            <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform" :class="m.enabled ? 'translate-x-4' : ''"></span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-3 mt-3 pt-3 border-t border-neutral-800/70">
+          <select
+            class="rounded-lg border border-neutral-800 bg-neutral-900 px-2 py-1 text-xs text-neutral-300 focus:outline-none"
+            @change="changeInterval(m, $event.target.value)"
+          >
+            <template x-for="opt in intervalOptions" :key="opt.minutes">
+              <option :value="opt.minutes" :selected="opt.minutes === m.interval_minutes" x-text="opt.label"></option>
+            </template>
+          </select>
+          <button @click="runMappingNow(m)" class="text-xs text-accent-300 hover:text-accent-200">Run now</button>
+          <button @click="deleteMapping(m)" class="text-xs text-neutral-500 hover:text-red-300 ml-auto">Remove</button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Live progress -->
+  <div x-show="activeRuns.length > 0">
+    {{> sync-status }}
+  </div>
+</section>

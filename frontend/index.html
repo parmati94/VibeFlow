@@ -17,12 +17,22 @@
     {{> auth-gate }}
   </div>
 
-  <!-- Connected: dashboard -->
-  <div x-show="!booting && health === 'ok' && bothConnected" class="space-y-8">
-    {{> sync-status }}
-    {{> playlist-browser }}
-    {{> history }}
-  </div>
+  <!-- Connected: navigated views -->
+  <template x-if="!booting && health === 'ok' && bothConnected">
+    <div>
+      <div x-show="view === 'home'">{{> view-home }}</div>
+      <div x-show="view === 'sync'" class="space-y-8">
+        {{> sync-status }}
+        {{> playlist-browser }}
+      </div>
+      <div x-show="view === 'scheduled'">{{> view-scheduled }}</div>
+      <div x-show="view === 'history'" class="space-y-4">
+        <h2 class="text-lg font-semibold">Sync history</h2>
+        <p x-show="history.length === 0" class="text-sm text-neutral-500">No syncs yet.</p>
+        {{> history }}
+      </div>
+    </div>
+  </template>
 </main>
 
 {{> toast }}

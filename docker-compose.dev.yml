@@ -20,6 +20,9 @@ services:
       - TZ=America/New_York
       - SPOTIFY_REDIRECT_URI=http://127.0.0.1:5571/auth/spotify/callback
       - TIDAL_REDIRECT_URI=http://127.0.0.1:5571/auth/tidal/callback
+      # Login gate off for local dev; DEV_AUTH enables the Spotify refresh-token bypass.
+      - ENABLE_LOGIN=false
+      - DEV_AUTH=false
       - LOG_LEVEL=DEBUG
     volumes:
       - ./backend:/app/backend                          # backend live-reload via uvicorn --reload

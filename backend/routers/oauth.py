@@ -17,11 +17,12 @@ from sqlmodel import Session
 from backend.auth import spotify as spotify_auth
 from backend.auth import store
 from backend.auth import tidal as tidal_auth
+from backend.common.auth import require_auth
 from backend.common.config import Settings, get_settings
 from backend.common.logging_config import logger
 from backend.deps import get_session
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(require_auth)])
 
 
 # ── Spotify ──────────────────────────────────────────────────────────────────

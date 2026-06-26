@@ -8,13 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 
 from backend.auth import store
+from backend.common.auth import require_auth
 from backend.core import jobs
 from backend.core.spotify_client import SpotifyClient
 from backend.deps import get_session
 from backend.models.schemas import SyncRequest, SyncRunView, UnmatchedTrack
 from backend.models.tables import SyncRun
 
-router = APIRouter(prefix="/api/sync", tags=["sync"])
+router = APIRouter(prefix="/api/sync", tags=["sync"], dependencies=[Depends(require_auth)])
 
 _ACTIVE = ("queued", "running")
 

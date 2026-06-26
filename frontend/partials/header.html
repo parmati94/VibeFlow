@@ -1,11 +1,11 @@
 <header class="sticky top-0 z-20 border-b border-neutral-800/80 bg-neutral-950/80 backdrop-blur">
   <div class="container mx-auto max-w-5xl px-4 py-3.5 flex items-center gap-3">
-    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-400 to-accent-600 grid place-items-center text-neutral-950 font-black shadow-lg shadow-accent-500/20">
-      VF
-    </div>
-    <div class="mr-auto flex items-center gap-2">
-      <div>
-        <h1 class="text-base font-semibold leading-tight tracking-tight">VibeFlow</h1>
+    <button @click="setView('home')" class="flex items-center gap-3 mr-2 group">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-400 to-accent-600 grid place-items-center text-neutral-950 font-black shadow-lg shadow-accent-500/20">
+        VF
+      </div>
+      <div class="text-left hidden sm:block">
+        <h1 class="text-base font-semibold leading-tight tracking-tight group-hover:text-accent-300 transition">VibeFlow</h1>
         <p class="text-[11px] text-neutral-500 leading-tight">Spotify → Tidal playlist sync</p>
       </div>
       <span
@@ -13,7 +13,20 @@
         class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30"
         title="DEV_AUTH on — Spotify uses the refresh-token bypass"
       >dev</span>
-    </div>
+    </button>
+
+    <!-- Primary nav (only when usable) -->
+    <nav x-show="!booting && bothConnected" class="flex items-center gap-1 mr-auto">
+      <template x-for="item in navItems" :key="item.id">
+        <button
+          @click="setView(item.id)"
+          class="px-3 py-1.5 rounded-lg text-sm transition"
+          :class="view === item.id ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'"
+          x-text="item.label"
+        ></button>
+      </template>
+    </nav>
+    <div x-show="booting || !bothConnected" class="mr-auto"></div>
 
     <!-- Connection pills -->
     <div class="flex items-center gap-2" x-show="!booting">
@@ -27,10 +40,16 @@
             class="w-1.5 h-1.5 rounded-full"
             :class="session[svc].connected ? (svc === 'spotify' ? 'bg-emerald-400' : 'bg-accent-400') : 'bg-neutral-600'"
           ></span>
-          <span class="capitalize text-neutral-300" x-text="svc"></span>
+          <span class="capitalize text-neutral-300 hidden sm:inline" x-text="svc"></span>
           <span class="text-neutral-600 group-hover:text-neutral-400" x-show="session[svc].connected">✕</span>
         </button>
       </template>
+      <button
+        x-show="loginEnabled"
+        @click="signOut()"
+        class="rounded-full border border-neutral-800 bg-neutral-900/60 px-2.5 py-1 text-xs text-neutral-400 hover:text-neutral-200 hover:border-neutral-700 transition"
+        title="Sign out"
+      >Sign out</button>
     </div>
   </div>
 </header>
