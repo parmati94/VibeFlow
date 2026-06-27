@@ -10,6 +10,23 @@
         class="w-full rounded-xl border border-neutral-800 bg-neutral-900/60 pl-9 pr-3 py-2 text-sm placeholder-neutral-600 focus:border-accent-500/60 focus:outline-none"
       />
     </div>
+    <div x-show="playlists.length > 1" x-data="vfselect(plSortOpts)" x-modelable="value" x-model="plSort" @click.away="open = false" class="relative w-40 shrink-0">
+      <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-xs text-neutral-300 hover:border-neutral-700 focus:outline-none transition">
+        <span class="flex items-center gap-1.5 min-w-0">
+          <svg class="w-3.5 h-3.5 text-neutral-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4 4m0 0l-4 4m4-4H7" /></svg>
+          <span class="truncate" x-text="selectedLabel"></span>
+        </span>
+        <svg class="w-3.5 h-3.5 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+      </button>
+      <div x-show="open" x-transition.opacity.duration.100ms class="absolute right-0 z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl py-1">
+        <template x-for="o in options" :key="o.value">
+          <button type="button" @click="pick(o.value); setPlSort(o.value)" class="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-xs transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'">
+            <span x-text="o.label"></span>
+            <svg x-show="isSelected(o.value)" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+          </button>
+        </template>
+      </div>
+    </div>
     <button @click="selectAllVisible()" class="text-xs text-neutral-400 hover:text-neutral-200 px-2 py-1">Select all</button>
     <button @click="clearSelection()" class="text-xs text-neutral-400 hover:text-neutral-200 px-2 py-1" x-show="selectedCount > 0">Clear</button>
     <button @click="loadPlaylists()" class="text-xs text-neutral-400 hover:text-neutral-200 px-2 py-1">↻ Refresh</button>
@@ -76,12 +93,11 @@
     <div class="sm:ml-auto flex items-center gap-2">
       <button
         @click="scheduleSelected()"
-        :disabled="selectedCount !== 1"
-        :data-tooltip="selectedCount === 1 ? 'Schedule this playlist' : 'Select one playlist to schedule'"
-        class="tooltip flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl border border-neutral-700 text-neutral-200 hover:bg-neutral-800 text-sm px-4 py-2.5 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        :data-tooltip="selectedCount === 1 ? 'Schedule this playlist' : `Schedule ${selectedCount} playlists`"
+        class="tooltip flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 rounded-xl border border-neutral-700 text-neutral-200 hover:bg-neutral-800 text-sm px-4 py-2.5 transition"
       >
         <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-        Schedule
+        <span x-text="selectedCount === 1 ? 'Schedule' : `Schedule (${selectedCount})`"></span>
       </button>
       <button
         @click="openSyncDialog()"

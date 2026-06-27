@@ -12,11 +12,27 @@ export function mappings() {
     mappings: [],
     mappingsLoading: false,
 
+    // Schedules-page sort (persisted on this device, like the theme picker).
+    sortBy: localStorage.getItem('vf-schedule-sort') || 'recent',
+    sortOpts: [
+      { value: 'recent', label: 'Recently added' },
+      { value: 'name', label: 'Name (A–Z)' },
+      { value: 'name_desc', label: 'Name (Z–A)' },
+      { value: 'next', label: 'Next run' },
+    ],
+
     // Builder state (shared by create + edit)
     showForm: false,
     formMode: 'create', // 'create' | 'edit'
     editingId: null,
     sform: _blankForm(),
+
+    // Bulk-schedule state (create mode, >1 playlist selected)
+    bulkMode: false,
+    bulkItems: [], // [{ id, name }]
+    stagger: false,
+    staggerStep: 5,
+    staggerOpts: [5, 10, 15, 30].map((m) => ({ value: m, label: String(m) })),
 
     // Dropdown option lists ({ value, label })
     freqOpts: [
@@ -47,19 +63,32 @@ export function mappings() {
       }
     },
 
-    // Start scheduling the single selected playlist (from the Sync page).
+    // Start scheduling the selected playlist(s) (from the Sync page). One opens the single
+    // builder; many opens the same builder in bulk mode (one shared schedule applied to all).
     scheduleSelected() {
-      if (this.selectedCount !== 1) return;
-      const id = [...this.selected][0];
-      const pl = this.playlists.find((p) => p.id === id);
-      if (!pl) return;
+      if (this.selectedCount < 1) return;
+      const items = [...this.selected]
+        .map((id) => this.playlists.find((p) => p.id === id))
+        .filter(Boolean);
+      if (!items.length) return;
       this.formMode = 'create';
       this.editingId = null;
-      this.sform = { ..._blankForm(), spotify_playlist_id: pl.id, spotify_name: pl.name };
+      this.stagger = false;
+      this.staggerStep = 5;
+      if (items.length === 1) {
+        this.bulkMode = false;
+        this.bulkItems = [];
+        this.sform = { ..._blankForm(), spotify_playlist_id: items[0].id, spotify_name: items[0].name };
+      } else {
+        this.bulkMode = true;
+        this.bulkItems = items.map((p) => ({ id: p.id, name: p.name }));
+        this.sform = _blankForm();
+      }
       this.showForm = true;
     },
     openEdit(m) {
       this.formMode = 'edit';
+      this.bulkMode = false;
       this.editingId = m.id;
       this.sform = _formFromMapping(m);
       this.showForm = true;
@@ -70,6 +99,24 @@ export function mappings() {
 
     async saveForm() {
       try {
+        if (this.formMode === 'create' && this.bulkMode) {
+          const res = await api.bulkCreateMappings({
+            playlists: this.bulkItems.map((p) => ({ spotify_playlist_id: p.id, spotify_name: p.name })),
+            enabled: true,
+            stagger_minutes: this.stagger ? Number(this.staggerStep) : 0,
+            ..._toSchedule(this.sform),
+          });
+          const n = res.created.length;
+          const s = res.skipped.length;
+          let msg = `${n} schedule${n === 1 ? '' : 's'} created`;
+          if (s) msg += `, ${s} skipped (already scheduled)`;
+          this._toast(true, msg + '.');
+          this.showForm = false;
+          this.clearSelection();
+          await this.loadMappings();
+          this.setView('scheduled');
+          return;
+        }
         if (this.formMode === 'create') {
           if (!this.sform.spotify_playlist_id) {
             this._toast(false, 'Pick a playlist first.');
@@ -98,10 +145,15 @@ export function mappings() {
     },
 
     async toggleMapping(m) {
+      // Mutate the existing object in place so the list isn't replaced (a full reload re-renders
+      // every row and flashes a ghost card). Reconcile fields like next_run_at from the response.
+      const prev = m.enabled;
+      m.enabled = !prev;
       try {
-        await api.updateMapping(m.id, { enabled: !m.enabled });
-        await this.loadMappings();
+        const updated = await api.updateMapping(m.id, { enabled: m.enabled });
+        Object.assign(m, updated);
       } catch (e) {
+        m.enabled = prev;
         this._toast(false, e.message);
       }
     },
@@ -109,7 +161,10 @@ export function mappings() {
     async deleteMapping(m) {
       try {
         await api.deleteMapping(m.id);
-        await this.loadMappings();
+        // Drop the row in place rather than reloading the whole list (which re-renders every
+        // card and flashes a ghost). Keyed x-for removes just this one.
+        const i = this.mappings.findIndex((x) => x.id === m.id);
+        if (i !== -1) this.mappings.splice(i, 1);
         this._toast(true, 'Scheduled sync removed.');
       } catch (e) {
         this._toast(false, e.message);
@@ -134,6 +189,45 @@ export function mappings() {
       } catch (e) {
         this._toast(false, e.message);
       }
+    },
+
+    // Schedules sorted per the persisted choice. Copies first so the source order is untouched.
+    // A method (not a getter): getters in a spread-in module get their value copied once, not
+    // re-evaluated — Alpine still re-runs a method call reactively in the template.
+    sortedMappings() {
+      const list = [...this.mappings];
+      const byName = (a, b) =>
+        (a.spotify_name || '').localeCompare(b.spotify_name || '', undefined, { sensitivity: 'base' });
+      switch (this.sortBy) {
+        case 'name':
+          return list.sort(byName);
+        case 'name_desc':
+          return list.sort((a, b) => byName(b, a));
+        case 'next':
+          return list.sort((a, b) => _nextRunKey(a) - _nextRunKey(b));
+        case 'recent':
+        default:
+          return list.sort((a, b) => b.id - a.id);
+      }
+    },
+
+    setSort(v) {
+      this.sortBy = v;
+      localStorage.setItem('vf-schedule-sort', v);
+    },
+
+    // One-line summary of what the bulk schedule will produce (reacts to time + stagger).
+    // Method, not getter — see sortedMappings() for why.
+    bulkPreview() {
+      if (!this.bulkMode || !this.bulkItems.length) return '';
+      const sched = _toSchedule(this.sform);
+      if (!this.stagger) {
+        return `All ${this.bulkItems.length} run at ${_staggeredClock(sched, 0, 0)}`;
+      }
+      const step = Number(this.staggerStep);
+      const first = _staggeredClock(sched, 0, step);
+      const last = _staggeredClock(sched, this.bulkItems.length - 1, step);
+      return `Staggered ${first} → ${last}, every ${step}m`;
     },
 
     scheduleLabel(m) {
@@ -171,6 +265,13 @@ export function mappings() {
   };
 }
 
+// Sort key for "Next run": paused or never-scheduled rows sink to the bottom.
+function _nextRunKey(m) {
+  if (!m.enabled || !m.next_run_at) return Infinity;
+  const d = parseTime(m.next_run_at);
+  return d ? d.getTime() : Infinity;
+}
+
 function _blankForm() {
   return { spotify_playlist_id: '', spotify_name: '', mode: 'add', frequency: 'daily', hour12: 3, minute: 0, ampm: 'AM', day_of_week: 0, day_of_month: 1 };
 }
@@ -200,6 +301,16 @@ function _toSchedule(f) {
     day_of_week: f.frequency === 'weekly' ? Number(f.day_of_week) : null,
     day_of_month: f.frequency === 'monthly' ? Number(f.day_of_month) : null,
   };
+}
+
+// Clock label for the i-th playlist in a bulk schedule, offset by `step` minutes each.
+// Minutes roll into the hour; the hour wraps at 24. Mirrors the backend's stagger math.
+function _staggeredClock(sched, i, step) {
+  const total = (sched.at_minute || 0) + i * step;
+  const minute = ((total % 60) + 60) % 60;
+  if (sched.frequency === 'hourly') return ':' + String(minute).padStart(2, '0');
+  const hour = ((((sched.at_hour || 0) + Math.floor(total / 60)) % 24) + 24) % 24;
+  return _clock(hour, minute);
 }
 
 function _clock(h, m) {

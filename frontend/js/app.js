@@ -33,8 +33,10 @@ document.addEventListener('alpine:init', () => {
     },
     get filteredPlaylists() {
       const q = this.filter.trim().toLowerCase();
-      if (!q) return this.playlists;
-      return this.playlists.filter((p) => p.name.toLowerCase().includes(q));
+      const list = q
+        ? this.playlists.filter((p) => p.name.toLowerCase().includes(q))
+        : this.playlists.slice();
+      return this._sortPlaylists(list);
     },
     get selectedCount() {
       return this.selected.size;
