@@ -22,8 +22,8 @@ export const api = {
   health: () => request('/api/health'),
   session: () => request('/api/session'),
   spotifyPlaylists: () => request('/api/playlists/spotify'),
-  startSync: (playlistIds) =>
-    request('/api/sync', { method: 'POST', body: JSON.stringify({ playlist_ids: playlistIds }) }),
+  startSync: (playlistIds, mode = 'add') =>
+    request('/api/sync', { method: 'POST', body: JSON.stringify({ playlist_ids: playlistIds, mode }) }),
   activeRuns: () => request('/api/sync/active'),
   recentRuns: (limit = 20) => request(`/api/sync/runs?limit=${limit}`),
   disconnect: (provider) => request(`/auth/${provider}/logout`, { method: 'POST' }),

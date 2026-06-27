@@ -125,8 +125,13 @@ def resolve(
     tidal: TidalClient,
     *,
     use_cache: bool = True,
+    isrc_hits: dict[str, str] | None = None,
 ) -> tuple[str | None, str]:
-    """Return (tidal_id_or_None, matched_by). matched_by ∈ isrc|metadata|cache|none."""
+    """Return (tidal_id_or_None, matched_by). matched_by ∈ isrc|metadata|cache|none.
+
+    `isrc_hits` is an optional pre-resolved {isrc: tidal_id} map (from a batched lookup); when
+    provided, ISRC resolution is a dict hit with no per-track request (a miss means Tidal has
+    no track for that ISRC, so we skip the single lookup and fall to metadata)."""
     spotify_id = track["spotify_id"]
 
     cached = session.get(TrackMatch, spotify_id) if use_cache else None
@@ -137,7 +142,7 @@ def resolve(
 
     isrc = track.get("isrc")
     if isrc:
-        tid = tidal.search_by_isrc(isrc)
+        tid = isrc_hits.get(isrc) if isrc_hits is not None else tidal.search_by_isrc(isrc)
         if tid:
             _cache(session, spotify_id, isrc, tid, "isrc")
             return tid, "isrc"

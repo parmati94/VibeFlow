@@ -1,8 +1,11 @@
-<!-- Recent sync runs with stats; expand to see unmatched tracks. -->
-<section x-show="history.length > 0" class="space-y-3" x-data="{ open: null }">
-  <h3 class="text-sm font-semibold text-neutral-300">Recent syncs</h3>
-  <div class="rounded-xl border border-neutral-800 overflow-hidden divide-y divide-neutral-800">
-    <template x-for="run in history" :key="run.id">
+<!-- Recent runs for the active tab; expand a row to see unmatched tracks / errors. -->
+<div x-data="{ open: null }">
+  <div x-show="visibleRuns.length === 0" class="rounded-xl border border-dashed border-neutral-800 p-8 text-center">
+    <p class="text-sm text-neutral-400" x-text="historyTab === 'scheduled' ? 'No scheduled syncs have run yet.' : 'No manual syncs yet.'"></p>
+  </div>
+
+  <div x-show="visibleRuns.length > 0" class="rounded-xl border border-neutral-800 overflow-hidden divide-y divide-neutral-800">
+    <template x-for="run in visibleRuns" :key="run.id">
       <div class="bg-neutral-900/40">
         <button
           @click="open === run.id ? open = null : open = run.id"
@@ -38,4 +41,4 @@
       </div>
     </template>
   </div>
-</section>
+</div>

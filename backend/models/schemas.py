@@ -28,6 +28,7 @@ class PlaylistSummary(BaseModel):
 
 class SyncRequest(BaseModel):
     playlist_ids: list[str]
+    mode: str = "add"  # add | mirror (for this one-time sync)
 
 
 class UnmatchedTrack(BaseModel):
@@ -39,6 +40,7 @@ class SyncRunView(BaseModel):
     id: int
     spotify_playlist_id: str
     playlist_name: str
+    scheduled: bool = False
     status: str
     total: int
     processed: int
@@ -58,15 +60,22 @@ class MessageResponse(BaseModel):
     message: str
 
 
-class MappingCreate(BaseModel):
+class ScheduleFields(BaseModel):
+    frequency: str | None = None  # hourly | daily | weekly | monthly
+    at_hour: int | None = None
+    at_minute: int = 0
+    day_of_week: int | None = None  # 0=Mon
+    day_of_month: int | None = None  # 1-28
+    mode: str = "add"  # add | mirror
+
+
+class MappingCreate(ScheduleFields):
     spotify_playlist_id: str
     spotify_name: str
-    interval_minutes: int | None = None
     enabled: bool = True
 
 
-class MappingUpdate(BaseModel):
-    interval_minutes: int | None = None
+class MappingUpdate(ScheduleFields):
     enabled: bool | None = None
 
 
@@ -77,6 +86,12 @@ class MappingView(BaseModel):
     tidal_playlist_id: str | None
     tidal_name: str | None
     enabled: bool
+    mode: str
+    frequency: str | None
+    at_hour: int | None
+    at_minute: int
+    day_of_week: int | None
+    day_of_month: int | None
     interval_minutes: int | None
     last_run_at: datetime | None
     last_status: str | None = None

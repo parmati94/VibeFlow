@@ -20,6 +20,10 @@ TIDAL_API_BASE = "https://openapi.tidal.com"
 _JSON_API = "application/vnd.api+json"
 _MAX_RETRIES = 4
 _ADD_CHUNK = 20
+_ISRC_BATCH = 20          # ISRCs per /v2/tracks?filter[isrc]=a,b,c lookup
+# Tidal exposes no quota headers — empirically a small token bucket (~5 quick, then 429
+# with Retry-After: 4). Pace requests to stay under it; backoff handles the occasional miss.
+_MIN_INTERVAL = 0.34      # ≈ 3 requests/sec
 
 
 _ISO_DUR = re.compile(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?")
@@ -45,6 +49,7 @@ class TidalClient:
         self._token = access_token
         self._country = country_code or get_settings().tidal_country_code
         self._client = httpx.Client(base_url=TIDAL_API_BASE, timeout=30)
+        self._last = 0.0  # monotonic time of the last request (for throttling)
 
     def close(self) -> None:
         self._client.close()
@@ -66,6 +71,7 @@ class TidalClient:
 
         backoff = 1.0
         for attempt in range(_MAX_RETRIES):
+            self._pace()
             resp = self._client.request(
                 method, path, json=json, params=params, headers=headers
             )
@@ -80,6 +86,14 @@ class TidalClient:
                 continue
             return resp
         return resp  # exhausted retries; caller inspects status
+
+    def _pace(self) -> None:
+        """Keep at least _MIN_INTERVAL between requests so we don't drain Tidal's bucket."""
+        now = time.monotonic()
+        wait = self._last + _MIN_INTERVAL - now
+        if wait > 0:
+            time.sleep(wait)
+        self._last = time.monotonic()
 
     # ── playlists ────────────────────────────────────────────────────────────
     def create_playlist(self, name: str, description: str | None) -> str:
@@ -111,25 +125,57 @@ class TidalClient:
             if resp.status_code >= 400:
                 raise TidalError(f"add_tracks failed {resp.status_code}: {resp.text}")
 
-    def existing_track_ids(self, playlist_id: str) -> set[str]:
-        """Track ids already in a Tidal playlist — drives diff detection on re-sync."""
-        ids: set[str] = set()
+    def playlist_exists(self, playlist_id: str) -> bool:
+        """Whether a Tidal playlist still exists (it may have been deleted in the Tidal app)."""
+        resp = self._request("GET", f"/v2/playlists/{playlist_id}", accept=_JSON_API)
+        return resp.status_code < 400
+
+    def remove_items(self, playlist_id: str, items: list[dict]) -> None:
+        """Remove specific playlist items (mirror mode). Tidal requires each item's per-entry
+        `meta.itemId` (not just the track id) to identify what to delete. `items` are dicts
+        of {track_id, item_id} as returned by playlist_items()."""
+        for i in range(0, len(items), _ADD_CHUNK):
+            chunk = items[i : i + _ADD_CHUNK]
+            resp = self._request(
+                "DELETE",
+                f"/v2/playlists/{playlist_id}/relationships/items",
+                json={
+                    "data": [
+                        {"id": str(it["track_id"]), "type": "tracks",
+                         "meta": {"itemId": it["item_id"]}}
+                        for it in chunk
+                    ]
+                },
+            )
+            if resp.status_code >= 400:
+                raise TidalError(f"remove_items failed {resp.status_code}: {resp.text}")
+
+    def playlist_items(self, playlist_id: str) -> list[dict]:
+        """All items in a Tidal playlist as {track_id, item_id} — drives diff detection and
+        mirror removal (item_id is the per-entry id Tidal needs to delete a specific item).
+
+        Cursor-paginated: Tidal pages 20 at a time and its `links.next` omits the /v2 prefix
+        (so following it 404s); we re-request with the cursor from `links.meta.nextCursor`."""
+        out: list[dict] = []
         path = f"/v2/playlists/{playlist_id}/relationships/items"
-        params: dict | None = None
-        while path:
+        cursor: str | None = None
+        for _ in range(500):  # safety bound (~10k items at 20/page)
+            params = {"page[cursor]": cursor} if cursor else None
             resp = self._request("GET", path, params=params, accept=_JSON_API)
             if resp.status_code >= 400:
-                logger.warning("existing_track_ids %s: %s", resp.status_code, resp.text)
+                logger.warning("playlist_items %s: %s", resp.status_code, resp.text)
                 break
             body = resp.json()
             for entry in body.get("data", []):
                 if entry.get("type") == "tracks":
-                    ids.add(str(entry["id"]))
-            nxt = (body.get("links") or {}).get("next")
-            if not nxt:
+                    out.append({
+                        "track_id": str(entry["id"]),
+                        "item_id": (entry.get("meta") or {}).get("itemId"),
+                    })
+            cursor = ((body.get("links") or {}).get("meta") or {}).get("nextCursor")
+            if not cursor:
                 break
-            path, params = nxt, None  # next link carries its own query
-        return ids
+        return out
 
     # ── search ───────────────────────────────────────────────────────────────
     def search_by_isrc(self, isrc: str) -> str | None:
@@ -140,6 +186,25 @@ class TidalClient:
             return None
         data = resp.json().get("data") or []
         return str(data[0]["id"]) if data else None
+
+    def tracks_by_isrc(self, isrcs: list[str]) -> dict[str, str]:
+        """Resolve many ISRCs at once → {isrc: tidal_track_id}. Tidal's filter[isrc] takes a
+        comma-separated list, so this is ~20x fewer requests than one lookup per track."""
+        out: dict[str, str] = {}
+        unique = [i for i in dict.fromkeys(isrcs) if i]
+        for i in range(0, len(unique), _ISRC_BATCH):
+            chunk = unique[i : i + _ISRC_BATCH]
+            resp = self._request(
+                "GET", "/v2/tracks",
+                params={"filter[isrc]": ",".join(chunk)}, accept=_JSON_API,
+            )
+            if resp.status_code >= 400:
+                continue
+            for entry in resp.json().get("data", []):
+                isrc = (entry.get("attributes") or {}).get("isrc")
+                if isrc and isrc not in out:
+                    out[isrc] = str(entry["id"])
+        return out
 
     def search_candidates(self, query: str, limit: int = 12) -> list[dict]:
         """Return ranked candidate tracks for a free-text query, each with the fields the

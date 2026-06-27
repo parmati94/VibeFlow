@@ -62,11 +62,20 @@ def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) 
     session.add(run)
     session.commit()
 
-    # Target Tidal playlist: reuse the mapping's, else create one.
+    # Target Tidal playlist: reuse the mapping's if it still exists (diff against its
+    # current tracks), otherwise create a fresh one. Re-checking existence handles a
+    # playlist that was deleted in the Tidal app since the last run.
     existing: set[str] = set()
-    if mapping and mapping.tidal_playlist_id:
+    items: list[dict] = []  # {track_id, item_id} of the reused playlist (for mirror removal)
+    reuse = bool(
+        mapping
+        and mapping.tidal_playlist_id
+        and tidal.playlist_exists(mapping.tidal_playlist_id)
+    )
+    if reuse:
         tidal_playlist_id = mapping.tidal_playlist_id
-        existing = tidal.existing_track_ids(tidal_playlist_id)
+        items = tidal.playlist_items(tidal_playlist_id)
+        existing = {it["track_id"] for it in items}
     else:
         tidal_playlist_id = tidal.create_playlist(
             details["name"], details.get("description")
@@ -79,19 +88,27 @@ def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) 
     session.add(run)
     session.commit()
 
-    to_add: list[str] = []
+    # Resolve every ISRC in one batched pass (one request per ~20 tracks) instead of a
+    # lookup per track — keeps us well under Tidal's rate limit. Only ISRC-misses then
+    # need a per-track metadata search.
+    isrc_hits = tidal.tracks_by_isrc([t["isrc"] for t in tracks if t.get("isrc")])
+
+    desired: set[str] = set()        # every source track's Tidal id (the target set)
+    to_add: list[str] = []           # new ids to append, in source order
+    queued: set[str] = set()         # dedupe adds within this run
     unmatched: list[dict] = []
     for idx, track in enumerate(tracks, start=1):
-        tidal_id, matched_by = matcher.resolve(session, track, tidal)
+        tidal_id, matched_by = matcher.resolve(session, track, tidal, isrc_hits=isrc_hits)
         if matched_by == "isrc":
             run.matched_isrc += 1
         elif matched_by == "metadata":
             run.matched_meta += 1
 
         if tidal_id:
-            if tidal_id not in existing:
+            desired.add(tidal_id)
+            if tidal_id not in existing and tidal_id not in queued:
                 to_add.append(tidal_id)
-                existing.add(tidal_id)
+                queued.add(tidal_id)
         else:
             run.not_found += 1
             unmatched.append({"name": track["name"], "artists": track.get("artists", [])})
@@ -104,6 +121,15 @@ def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) 
     if to_add:
         tidal.add_tracks(tidal_playlist_id, to_add)
     run.added = len(to_add)
+
+    # Mirror mode: drop tracks no longer in the source (only meaningful when reusing a
+    # playlist that already had tracks). Add-only mode leaves existing tracks alone.
+    if run.mode == "mirror" and reuse:
+        to_remove = [it for it in items if it["track_id"] not in desired]
+        if to_remove:
+            tidal.remove_items(tidal_playlist_id, to_remove)
+            logger.info("Mirror: removed %d track(s) no longer in source", len(to_remove))
+
     run.unmatched = json.dumps(unmatched)
     run.status = "partial" if run.not_found else "success"
     run.finished_at = datetime.utcnow()

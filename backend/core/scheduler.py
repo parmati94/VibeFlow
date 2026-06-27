@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlmodel import select
 
@@ -51,14 +52,34 @@ def reload_jobs() -> None:
         session.close()
 
 
+def _trigger(mapping: Mapping):
+    """Build the APScheduler trigger for a mapping's schedule (cron), falling back to the
+    legacy fixed interval. Cron times are in the scheduler's local timezone (container TZ)."""
+    f, h, m = mapping.frequency, mapping.at_hour or 0, mapping.at_minute or 0
+    if f == "hourly":
+        return CronTrigger(minute=m)
+    if f == "daily":
+        return CronTrigger(hour=h, minute=m)
+    if f == "weekly":
+        return CronTrigger(day_of_week=mapping.day_of_week or 0, hour=h, minute=m)
+    if f == "monthly":
+        return CronTrigger(day=mapping.day_of_month or 1, hour=h, minute=m)
+    if mapping.interval_minutes:  # legacy
+        return IntervalTrigger(minutes=mapping.interval_minutes)
+    return None
+
+
 def schedule_mapping(mapping: Mapping) -> None:
-    """Add or replace the job for one mapping. Disabled / interval-less mappings are removed."""
+    """Add or replace the job for one mapping. Disabled / un-scheduled mappings are removed."""
     unschedule_mapping(mapping.id)
-    if not (mapping.enabled and mapping.interval_minutes):
+    if not mapping.enabled:
+        return
+    trigger = _trigger(mapping)
+    if trigger is None:
         return
     _scheduler.add_job(
         trigger_mapping_sync,
-        trigger=IntervalTrigger(minutes=mapping.interval_minutes),
+        trigger=trigger,
         id=_job_id(mapping.id),
         args=[mapping.id],
         replace_existing=True,
@@ -88,6 +109,8 @@ def trigger_mapping_sync(mapping_id: int) -> int | None:
             return None
         run = SyncRun(
             mapping_id=mapping.id,
+            trigger="scheduled",
+            mode=mapping.mode,
             spotify_playlist_id=mapping.spotify_playlist_id,
             playlist_name=mapping.spotify_name,
         )

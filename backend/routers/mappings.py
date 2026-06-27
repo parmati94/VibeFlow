@@ -38,7 +38,11 @@ def _view(session: Session, m: Mapping) -> MappingView:
 
 @router.get("", response_model=list[MappingView])
 def list_mappings(session: Session = Depends(get_session)) -> list[MappingView]:
-    mappings = session.exec(select(Mapping).order_by(Mapping.id.desc())).all()
+    # Only scheduled links appear on the Schedules page; manual-only links (frequency=None,
+    # created by "Sync once" to dedupe the Tidal playlist) stay hidden.
+    mappings = session.exec(
+        select(Mapping).where(Mapping.frequency.is_not(None)).order_by(Mapping.id.desc())
+    ).all()
     return [_view(session, m) for m in mappings]
 
 
@@ -46,18 +50,22 @@ def list_mappings(session: Session = Depends(get_session)) -> list[MappingView]:
 def create_mapping(
     body: MappingCreate, session: Session = Depends(get_session)
 ) -> MappingView:
-    existing = session.exec(
+    # Upsert by playlist: a "Sync once" may have already created a (manual-only) link for this
+    # playlist — scheduling it upgrades that same link rather than making a second one.
+    mapping = session.exec(
         select(Mapping).where(Mapping.spotify_playlist_id == body.spotify_playlist_id)
     ).first()
-    if existing:
-        raise HTTPException(status_code=409, detail="A mapping for this playlist already exists.")
-    mapping = Mapping(
-        spotify_playlist_id=body.spotify_playlist_id,
-        spotify_name=body.spotify_name,
-        enabled=body.enabled,
-        interval_minutes=body.interval_minutes,
-    )
-    session.add(mapping)
+    if mapping is None:
+        mapping = Mapping(spotify_playlist_id=body.spotify_playlist_id, spotify_name=body.spotify_name)
+        session.add(mapping)
+    mapping.spotify_name = body.spotify_name
+    mapping.enabled = body.enabled
+    mapping.mode = body.mode
+    mapping.frequency = body.frequency
+    mapping.at_hour = body.at_hour
+    mapping.at_minute = body.at_minute
+    mapping.day_of_week = body.day_of_week
+    mapping.day_of_month = body.day_of_month
     session.commit()
     session.refresh(mapping)
     scheduler.schedule_mapping(mapping)
@@ -71,10 +79,18 @@ def update_mapping(
     mapping = session.get(Mapping, mapping_id)
     if not mapping:
         raise HTTPException(status_code=404, detail="Mapping not found.")
-    if body.interval_minutes is not None:
-        mapping.interval_minutes = body.interval_minutes
     if body.enabled is not None:
         mapping.enabled = body.enabled
+    # A schedule edit always sends the full set; only overwrite when a frequency is provided
+    # (so an enable/disable-only PATCH doesn't wipe the schedule).
+    if body.frequency is not None:
+        mapping.frequency = body.frequency
+        mapping.at_hour = body.at_hour
+        mapping.at_minute = body.at_minute
+        mapping.day_of_week = body.day_of_week
+        mapping.day_of_month = body.day_of_month
+        mapping.mode = body.mode
+        mapping.interval_minutes = None  # migrated off the legacy interval
     session.add(mapping)
     session.commit()
     session.refresh(mapping)
@@ -86,13 +102,21 @@ def update_mapping(
 def delete_mapping(
     mapping_id: int, session: Session = Depends(get_session)
 ) -> MessageResponse:
+    """Remove the schedule. The Spotify→Tidal link is kept (frequency cleared) so manual
+    syncs still target the same Tidal playlist instead of creating a duplicate."""
     mapping = session.get(Mapping, mapping_id)
     if not mapping:
         raise HTTPException(status_code=404, detail="Mapping not found.")
     scheduler.unschedule_mapping(mapping_id)
-    session.delete(mapping)
+    mapping.frequency = None
+    mapping.enabled = False
+    mapping.at_hour = None
+    mapping.at_minute = 0
+    mapping.day_of_week = None
+    mapping.day_of_month = None
+    session.add(mapping)
     session.commit()
-    return MessageResponse(message="Mapping removed.")
+    return MessageResponse(message="Schedule removed.")
 
 
 @router.post("/{mapping_id}/run", response_model=MessageResponse)

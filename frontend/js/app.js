@@ -1,16 +1,19 @@
 import Alpine from 'alpinejs';
+import './select.js'; // registers the reusable vfselect dropdown component
 import { api } from './api.js';
 import { connection } from './connection.js';
 import { mappings } from './mappings.js';
 import { nav } from './nav.js';
 import { playlists } from './playlists.js';
 import { sync } from './sync.js';
+import { theme } from './theme.js';
 import { toast } from './toast.js';
 
 document.addEventListener('alpine:init', () => {
   Alpine.data('app', () => ({
     // Feature modules spread in so the markup sees one flat component.
     ...toast(),
+    ...theme(),
     ...nav(),
     ...connection(),
     ...playlists(),
@@ -19,6 +22,7 @@ document.addEventListener('alpine:init', () => {
 
     booting: true,
     loginEnabled: false,
+    historyTab: 'manual', // 'manual' | 'scheduled'
 
     // Computed props live on the root component — object spread copies a getter's value,
     // not the getter, so these can't sit in the spread-in feature modules.
@@ -36,8 +40,21 @@ document.addEventListener('alpine:init', () => {
     get activeScheduleCount() {
       return this.mappings.filter((m) => m.enabled).length;
     },
+    get playlistOpts() {
+      return this.playlists.map((p) => ({ value: p.id, label: `${p.name} (${p.track_count})` }));
+    },
+    get manualRuns() {
+      return this.history.filter((r) => !r.scheduled);
+    },
+    get scheduledRuns() {
+      return this.history.filter((r) => r.scheduled);
+    },
+    get visibleRuns() {
+      return this.historyTab === 'scheduled' ? this.scheduledRuns : this.manualRuns;
+    },
 
     async init() {
+      this.initTheme();
       this.handleAuthRedirect();
 
       // App login gate: bounce to the login page if required and not signed in.

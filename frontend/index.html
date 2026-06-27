@@ -28,12 +28,23 @@
       <div x-show="view === 'scheduled'">{{> view-scheduled }}</div>
       <div x-show="view === 'history'" class="space-y-4">
         <h2 class="text-lg font-semibold">Sync history</h2>
-        <p x-show="history.length === 0" class="text-sm text-neutral-500">No syncs yet.</p>
+        <div class="inline-flex rounded-lg border border-neutral-800 bg-neutral-900/50 p-0.5 text-sm">
+          <button @click="historyTab = 'manual'" class="px-3 py-1.5 rounded-md transition" :class="historyTab === 'manual' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'">
+            Manual <span class="text-neutral-500" x-text="`(${manualRuns.length})`"></span>
+          </button>
+          <button @click="historyTab = 'scheduled'" class="px-3 py-1.5 rounded-md transition" :class="historyTab === 'scheduled' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'">
+            Scheduled <span class="text-neutral-500" x-text="`(${scheduledRuns.length})`"></span>
+          </button>
+        </div>
         {{> history }}
       </div>
     </div>
   </template>
 </main>
 
+{{> schedule-builder }}
+{{> sync-dialog }}
+{{> run-confirm-dialog }}
+{{> settings }}
 {{> toast }}
 {{> footer }}
