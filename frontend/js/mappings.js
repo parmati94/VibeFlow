@@ -153,6 +153,21 @@ export function mappings() {
         month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
       });
     },
+
+    // Future-relative time for "next run in …" (counterpart to formatRelative's "… ago").
+    formatUntil(iso) {
+      const d = parseTime(iso);
+      if (!d) return '—';
+      const secs = Math.round((d.getTime() - Date.now()) / 1000);
+      if (secs <= 30) return 'now';
+      const mins = Math.round(secs / 60);
+      if (mins < 60) return `in ${mins}m`;
+      const hrs = Math.round(mins / 60);
+      if (hrs < 24) return `in ${hrs}h`;
+      const days = Math.round(hrs / 24);
+      if (days < 7) return `in ${days}d`;
+      return `on ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}`;
+    },
   };
 }
 

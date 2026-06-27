@@ -55,6 +55,23 @@ document.addEventListener('alpine:init', () => {
       return this.historyTab === 'scheduled' ? this.scheduledRuns : this.manualRuns;
     },
 
+    // ── Home dashboard ──
+    get upcomingSchedules() {
+      return this.mappings
+        .filter((m) => m.enabled && m.next_run_at)
+        .sort((a, b) => new Date(a.next_run_at) - new Date(b.next_run_at))
+        .slice(0, 3);
+    },
+    get recentActivity() {
+      return this.history.slice(0, 3);
+    },
+    get totalTracksSynced() {
+      return this.history.reduce((sum, r) => sum + (r.added || 0), 0);
+    },
+    get lastRun() {
+      return this.history[0] || null;
+    },
+
     async init() {
       this.initTheme();
       this.handleAuthRedirect();

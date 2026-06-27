@@ -1,42 +1,128 @@
 <section class="py-6 space-y-8">
-  <div class="text-center max-w-xl mx-auto">
+  <!-- Greeting -->
+  <div>
     <h2 class="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-b from-white to-neutral-400 bg-clip-text text-transparent">
-      What would you like to do?
+      <span x-show="currentUser">Welcome back, <span x-text="currentUser?.username"></span>.</span>
+      <span x-show="!currentUser">Welcome back.</span>
     </h2>
-    <p class="mt-2 text-neutral-400 text-sm">Both services connected — pick an action below.</p>
+    <p class="mt-1.5 text-neutral-400 text-sm">Your Spotify → Tidal sync at a glance.</p>
   </div>
 
-  <div class="grid sm:grid-cols-3 gap-4">
-    <!-- Sync once -->
-    <button @click="setView('sync')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-6 transition-all duration-200 hover:border-accent-500/50 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30">
-      <div class="w-11 h-11 rounded-xl bg-accent-500/15 grid place-items-center text-accent-400 text-xl mb-4 group-hover:scale-105 transition">↻</div>
-      <h3 class="font-semibold mb-1">Sync</h3>
-      <p class="text-xs text-neutral-500">Browse your playlists — copy one to Tidal now or set up a schedule.</p>
+  <!-- Stat tiles -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <button @click="setView('sync')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-4 transition-all hover:border-accent-500/40 hover:-translate-y-0.5">
+      <p class="text-[11px] uppercase tracking-wide text-neutral-500">Playlists</p>
+      <p class="text-2xl font-bold mt-1" x-text="playlists.length"></p>
+      <p class="text-[11px] text-neutral-600 mt-0.5">on Spotify</p>
     </button>
-
-    <!-- Schedules -->
-    <button @click="setView('scheduled')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-6 transition-all duration-200 hover:border-accent-500/50 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30">
-      <div class="w-11 h-11 rounded-xl bg-accent-500/15 grid place-items-center text-accent-400 text-xl mb-4 group-hover:scale-105 transition">⏱</div>
-      <h3 class="font-semibold mb-1">Schedules</h3>
-      <p class="text-xs text-neutral-500">
-        Manage your automatic syncs.
-        <span x-show="activeScheduleCount > 0" class="text-accent-300" x-text="`${activeScheduleCount} active`"></span>
-      </p>
+    <button @click="setView('scheduled')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-4 transition-all hover:border-accent-500/40 hover:-translate-y-0.5">
+      <p class="text-[11px] uppercase tracking-wide text-neutral-500">Active schedules</p>
+      <p class="text-2xl font-bold mt-1" :class="activeScheduleCount > 0 ? 'text-accent-300' : ''" x-text="activeScheduleCount"></p>
+      <p class="text-[11px] text-neutral-600 mt-0.5">running automatically</p>
     </button>
-
-    <!-- History -->
-    <button @click="setView('history')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-6 transition-all duration-200 hover:border-accent-500/50 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30">
-      <div class="w-11 h-11 rounded-xl bg-accent-500/15 grid place-items-center text-accent-400 text-xl mb-4 group-hover:scale-105 transition">≣</div>
-      <h3 class="font-semibold mb-1">History</h3>
-      <p class="text-xs text-neutral-500">
-        Review past syncs and unmatched tracks.
-        <span x-show="history.length" class="text-neutral-400" x-text="`${history.length} runs`"></span>
-      </p>
+    <div class="rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-4">
+      <p class="text-[11px] uppercase tracking-wide text-neutral-500">Tracks synced</p>
+      <p class="text-2xl font-bold mt-1" x-text="totalTracksSynced"></p>
+      <p class="text-[11px] text-neutral-600 mt-0.5">added to Tidal</p>
+    </div>
+    <button @click="setView('history')" class="group text-left rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-900/40 p-4 transition-all hover:border-accent-500/40 hover:-translate-y-0.5">
+      <p class="text-[11px] uppercase tracking-wide text-neutral-500">Last sync</p>
+      <p class="text-lg font-semibold mt-1.5 truncate" x-text="lastRun ? formatRelative(lastRun.finished_at || lastRun.created_at) : '—'"></p>
+      <p class="text-[11px] text-neutral-600 mt-0.5 truncate" x-text="lastRun ? lastRun.playlist_name : 'no syncs yet'"></p>
     </button>
   </div>
 
   <!-- Live sync banner if something is running -->
   <div x-show="activeRuns.length > 0">
     {{> sync-status }}
+  </div>
+
+  <!-- Next up: upcoming scheduled syncs -->
+  <div class="space-y-3">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-neutral-300">Next up</h3>
+      <button x-show="mappings.length" @click="setView('scheduled')" class="text-xs text-accent-300 hover:text-accent-200 underline-offset-2 hover:underline">All schedules →</button>
+    </div>
+
+    <!-- Empty: no schedules at all -->
+    <div x-show="upcomingSchedules.length === 0" class="rounded-2xl border border-dashed border-neutral-800 p-6 text-center">
+      <p class="text-sm text-neutral-400">No automatic syncs scheduled.</p>
+      <button @click="setView('sync')" class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-accent-500 hover:bg-accent-400 text-neutral-950 font-medium text-sm px-4 py-2 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        Create a schedule
+      </button>
+    </div>
+
+    <div x-show="upcomingSchedules.length > 0" class="space-y-2">
+      <template x-for="m in upcomingSchedules" :key="m.id">
+        <div class="group flex items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-900/40 p-3 transition hover:border-accent-500/40 hover:bg-neutral-900/70">
+          <div class="w-9 h-9 rounded-lg bg-accent-500/10 text-accent-400 grid place-items-center shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5">
+              <p class="text-sm font-medium truncate min-w-0" x-text="m.spotify_name"></p>
+              <span x-show="m.mode === 'mirror'" data-tooltip="Mirror — adds new and removes deleted" class="tooltip text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-800 text-neutral-400 shrink-0">mirror</span>
+            </div>
+            <p class="text-xs text-neutral-500 mt-0.5 truncate">
+              <span class="text-accent-400/90" x-text="scheduleLabel(m)"></span>
+              <span class="text-neutral-600">·</span> next <span x-text="formatUntil(m.next_run_at)"></span>
+            </p>
+          </div>
+          <button @click="askRunNow(m)" data-tooltip="Sync now" class="tooltip grid place-items-center w-8 h-8 rounded-lg bg-accent-500/15 text-accent-300 hover:bg-accent-500/25 transition shrink-0">
+            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+          </button>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Recent activity -->
+  <div class="space-y-3">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-semibold text-neutral-300">Recent activity</h3>
+      <button x-show="history.length" @click="setView('history')" class="text-xs text-accent-300 hover:text-accent-200 underline-offset-2 hover:underline">Full history →</button>
+    </div>
+
+    <div x-show="recentActivity.length === 0" class="rounded-2xl border border-dashed border-neutral-800 p-6 text-center">
+      <p class="text-sm text-neutral-400">No syncs yet.</p>
+      <button @click="setView('sync')" class="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-neutral-700 text-neutral-200 hover:bg-neutral-800 text-sm px-4 py-2 transition">
+        <span class="text-base leading-none">↻</span> Sync a playlist
+      </button>
+    </div>
+
+    <div x-show="recentActivity.length > 0" class="rounded-xl border border-neutral-800 overflow-hidden divide-y divide-neutral-800">
+      <template x-for="run in recentActivity" :key="run.id">
+        <button @click="setView('history')" class="w-full flex items-center gap-3 px-4 py-3 text-left bg-neutral-900/40 hover:bg-neutral-900/80 transition">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-1.5">
+              <p class="text-sm font-medium truncate min-w-0" x-text="run.playlist_name"></p>
+              <span x-show="run.scheduled" data-tooltip="Ran on a schedule" class="tooltip text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-800 text-neutral-400 shrink-0">auto</span>
+            </div>
+            <p class="text-xs text-neutral-500 mt-0.5">
+              <span class="text-accent-400/90" x-text="run.added"></span> added ·
+              <span x-text="run.total - run.not_found"></span> matched ·
+              <span x-text="run.not_found"></span> missed
+              <span class="text-neutral-700">·</span>
+              <span x-text="formatRelative(run.finished_at || run.created_at)"></span>
+            </p>
+          </div>
+          <span class="text-[11px] px-2 py-0.5 rounded-full capitalize shrink-0" :class="statusClass(run.status)" x-text="run.status"></span>
+        </button>
+      </template>
+    </div>
+  </div>
+
+  <!-- Quick actions -->
+  <div class="grid grid-cols-3 gap-2 pt-1">
+    <button @click="setView('sync')" class="flex items-center justify-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/40 py-2.5 text-sm text-neutral-300 hover:border-accent-500/40 hover:text-white transition">
+      <span class="text-accent-400">↻</span> Sync
+    </button>
+    <button @click="setView('scheduled')" class="flex items-center justify-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/40 py-2.5 text-sm text-neutral-300 hover:border-accent-500/40 hover:text-white transition">
+      <span class="text-accent-400">⏱</span> Schedules
+    </button>
+    <button @click="setView('history')" class="flex items-center justify-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/40 py-2.5 text-sm text-neutral-300 hover:border-accent-500/40 hover:text-white transition">
+      <span class="text-accent-400">≣</span> History
+    </button>
   </div>
 </section>
