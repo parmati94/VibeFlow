@@ -22,7 +22,11 @@ _ACTIVE = ("queued", "running")
 
 def _view(run: SyncRun) -> SyncRunView:
     unmatched = [UnmatchedTrack(**u) for u in json.loads(run.unmatched or "[]")]
-    return SyncRunView(**run.model_dump(exclude={"unmatched", "mapping_id"}), unmatched=unmatched)
+    return SyncRunView(
+        **run.model_dump(exclude={"unmatched", "mapping_id"}),
+        unmatched=unmatched,
+        scheduled=run.mapping_id is not None,
+    )
 
 
 @router.post("", response_model=list[SyncRunView])

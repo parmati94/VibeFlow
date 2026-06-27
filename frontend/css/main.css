@@ -56,6 +56,29 @@ body {
   display: none !important;
 }
 
+/* Custom scrollbars — thin, on-brand (replaces the chunky OS default). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(64 64 64) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(64 64 64);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(82 82 82);
+  background-clip: content-box;
+}
+
 /* Custom hover/focus tooltip — on-brand replacement for the browser's title bubble.
    Add class="tooltip" + data-tooltip="..." to any element; shows below on hover/focus.
    Clipped by overflow:hidden/auto ancestors, so use it on chrome, not scroll-area items. */

@@ -27,7 +27,7 @@ export function sync() {
 
     async loadHistory() {
       try {
-        this.history = await api.recentRuns(20);
+        this.history = await api.recentRuns(50);
       } catch (e) {
         /* non-fatal */
       }

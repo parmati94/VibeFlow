@@ -39,6 +39,7 @@ class SyncRunView(BaseModel):
     id: int
     spotify_playlist_id: str
     playlist_name: str
+    scheduled: bool = False
     status: str
     total: int
     processed: int
