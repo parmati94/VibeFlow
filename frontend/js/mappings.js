@@ -1,4 +1,4 @@
-import { api } from './api.js';
+import { api, parseTime } from './api.js';
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -147,8 +147,9 @@ export function mappings() {
     },
 
     formatWhen(iso) {
-      if (!iso) return '—';
-      return new Date(iso).toLocaleString([], {
+      const d = parseTime(iso);
+      if (!d) return '—';
+      return d.toLocaleString([], {
         month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
       });
     },

@@ -1,4 +1,4 @@
-import { api } from './api.js';
+import { api, parseTime } from './api.js';
 
 // Kick off syncs and track their progress. While anything is queued/running we poll
 // /api/sync/active on an interval; history refreshes alongside it.
@@ -82,9 +82,9 @@ export function sync() {
 
     // "3m ago" / "2h ago" / "Jun 27" — compact relative time for the run rows.
     formatRelative(iso) {
-      if (!iso) return '—';
-      const then = new Date(iso).getTime();
-      const secs = Math.round((Date.now() - then) / 1000);
+      const d = parseTime(iso);
+      if (!d) return '—';
+      const secs = Math.round((Date.now() - d.getTime()) / 1000);
       if (secs < 45) return 'just now';
       if (secs < 90) return '1m ago';
       const mins = Math.round(secs / 60);
@@ -93,13 +93,13 @@ export function sync() {
       if (hrs < 24) return `${hrs}h ago`;
       const days = Math.round(hrs / 24);
       if (days < 7) return `${days}d ago`;
-      return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
     },
 
     // Wall-clock duration of a finished run, e.g. "1m 12s".
     runDuration(run) {
       if (!run.started_at || !run.finished_at) return '—';
-      let secs = Math.round((new Date(run.finished_at) - new Date(run.started_at)) / 1000);
+      let secs = Math.round((parseTime(run.finished_at) - parseTime(run.started_at)) / 1000);
       if (secs < 0) secs = 0;
       if (secs < 60) return `${secs}s`;
       const mins = Math.floor(secs / 60);

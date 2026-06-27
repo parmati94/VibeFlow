@@ -1,3 +1,12 @@
+// Parse an API timestamp into a Date. The backend emits naive UTC (no tz suffix) for
+// stored times; tag those as UTC so the browser renders them in the user's local zone.
+// Strings that already carry a tz (e.g. APScheduler's next_run_at offset) pass through.
+export function parseTime(iso) {
+  if (!iso) return null;
+  const hasTz = /([zZ]|[+-]\d{2}:?\d{2})$/.test(iso);
+  return new Date(hasTz ? iso : `${iso}Z`);
+}
+
 // Thin fetch wrapper. All calls are same-origin (nginx proxies /api + /auth/* to uvicorn),
 // so credentials: 'include' keeps the session cookie flowing without CORS.
 async function request(path, options = {}) {
