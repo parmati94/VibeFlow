@@ -25,6 +25,9 @@ class User(SQLModel, table=True):
     username: str = Field(index=True, unique=True)
     password_hash: str | None = None  # None = not yet set up
     is_admin: bool = False
+    # Sync preference: when True, a track is added once per time it appears in the source
+    # playlist; when False (default), accidental duplicates collapse to a single entry.
+    allow_duplicates: bool = False
     created_at: datetime = Field(default_factory=_utcnow)
 
 

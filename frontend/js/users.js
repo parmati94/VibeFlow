@@ -22,6 +22,24 @@ export function users() {
     pwForm: { current: '', next: '', confirm: '' },
     changingPw: false,
 
+    // Sync preference toggle (optimistic; reverts on failure).
+    savingPrefs: false,
+    async toggleDuplicates() {
+      if (!this.currentUser) return;
+      const next = !this.currentUser.allow_duplicates;
+      this.currentUser.allow_duplicates = next;
+      this.savingPrefs = true;
+      try {
+        await api.updatePreferences({ allow_duplicates: next });
+        this._toast(true, next ? 'Duplicate tracks will be kept.' : 'Duplicate tracks will be skipped.');
+      } catch (e) {
+        this.currentUser.allow_duplicates = !next;
+        this._toast(false, e.message || 'Could not update preference.');
+      } finally {
+        this.savingPrefs = false;
+      }
+    },
+
     openNewUser() {
       this.newUser = { username: '', password: '', is_admin: false };
       this.showNewUser = true;

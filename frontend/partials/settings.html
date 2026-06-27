@@ -76,6 +76,29 @@
     </div>
     <p class="text-xs text-neutral-500 mt-3">Re-tints the whole app. Saved on this device.</p>
 
+    <!-- Sync preferences -->
+    <template x-if="currentUser">
+      <div class="mt-8 pt-6 border-t border-neutral-800">
+        <h3 class="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-3">Sync</h3>
+        <div class="flex items-center justify-between gap-3">
+          <div class="select-none min-w-0">
+            <p class="text-sm text-neutral-200">Allow duplicate tracks</p>
+            <p class="text-[11px] text-neutral-500">Add a song once per time it appears in the source, instead of collapsing repeats.</p>
+          </div>
+          <button
+            type="button"
+            @click="toggleDuplicates()"
+            :disabled="savingPrefs"
+            :data-tooltip="currentUser.allow_duplicates ? 'Duplicates kept' : 'Duplicates skipped'"
+            class="tooltip relative w-9 h-5 rounded-full transition shrink-0 disabled:opacity-50"
+            :class="currentUser.allow_duplicates ? 'bg-accent-500' : 'bg-neutral-700'"
+          >
+            <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform" :class="currentUser.allow_duplicates ? 'translate-x-4' : ''"></span>
+          </button>
+        </div>
+      </div>
+    </template>
+
     <!-- Account: change own password (only when the login gate is on) -->
     <template x-if="loginEnabled && currentUser">
       <div class="mt-8 pt-6 border-t border-neutral-800">

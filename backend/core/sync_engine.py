@@ -9,6 +9,7 @@ own DB session.
 from __future__ import annotations
 
 import json
+from collections import Counter, defaultdict
 from datetime import datetime
 
 from backend.auth import store
@@ -17,7 +18,7 @@ from backend.common.logging_config import logger
 from backend.core import matcher
 from backend.core.spotify_client import SpotifyClient
 from backend.core.tidal_client import TidalClient
-from backend.models.tables import Mapping, SyncRun
+from backend.models.tables import Mapping, SyncRun, User
 
 
 def run_sync(run_id: int) -> None:
@@ -54,6 +55,8 @@ def run_sync(run_id: int) -> None:
 
 def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) -> None:
     mapping = session.get(Mapping, run.mapping_id) if run.mapping_id else None
+    owner = session.get(User, run.user_id)
+    allow_dupes = bool(owner and owner.allow_duplicates)
 
     details = spotify.get_playlist(run.spotify_playlist_id)
     tracks = spotify.get_tracks(run.spotify_playlist_id)
@@ -65,7 +68,7 @@ def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) 
     # Target Tidal playlist: reuse the mapping's if it still exists (diff against its
     # current tracks), otherwise create a fresh one. Re-checking existence handles a
     # playlist that was deleted in the Tidal app since the last run.
-    existing: set[str] = set()
+    existing: Counter[str] = Counter()  # tidal_id -> times already on the playlist
     items: list[dict] = []  # {track_id, item_id} of the reused playlist (for mirror removal)
     reuse = bool(
         mapping
@@ -75,7 +78,7 @@ def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) 
     if reuse:
         tidal_playlist_id = mapping.tidal_playlist_id
         items = tidal.playlist_items(tidal_playlist_id)
-        existing = {it["track_id"] for it in items}
+        existing = Counter(it["track_id"] for it in items)
     else:
         tidal_playlist_id = tidal.create_playlist(
             details["name"], details.get("description")
@@ -93,9 +96,11 @@ def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) 
     # need a per-track metadata search.
     isrc_hits = tidal.tracks_by_isrc([t["isrc"] for t in tracks if t.get("isrc")])
 
-    desired: set[str] = set()        # every source track's Tidal id (the target set)
-    to_add: list[str] = []           # new ids to append, in source order
-    queued: set[str] = set()         # dedupe adds within this run
+    # Target multiplicity per Tidal id: how many copies the source wants. When duplicates are
+    # allowed it's the source count; otherwise it's capped at 1 so accidental dupes collapse.
+    desired: Counter[str] = Counter()
+    to_add: list[str] = []           # ids to append, in source order
+    added_so_far: Counter[str] = Counter()  # copies of each id queued this run
     unmatched: list[dict] = []
     for idx, track in enumerate(tracks, start=1):
         tidal_id, matched_by = matcher.resolve(session, track, tidal, isrc_hits=isrc_hits)
@@ -105,10 +110,12 @@ def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) 
             run.matched_meta += 1
 
         if tidal_id:
-            desired.add(tidal_id)
-            if tidal_id not in existing and tidal_id not in queued:
+            desired[tidal_id] = desired[tidal_id] + 1 if allow_dupes else 1
+            # Add this instance only if the playlist (already-present + queued) holds fewer
+            # copies than the source wants — keeps re-syncs idempotent in either mode.
+            if existing[tidal_id] + added_so_far[tidal_id] < desired[tidal_id]:
                 to_add.append(tidal_id)
-                queued.add(tidal_id)
+                added_so_far[tidal_id] += 1
         else:
             run.not_found += 1
             unmatched.append({"name": track["name"], "artists": track.get("artists", [])})
@@ -122,13 +129,19 @@ def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) 
         tidal.add_tracks(tidal_playlist_id, to_add)
     run.added = len(to_add)
 
-    # Mirror mode: drop tracks no longer in the source (only meaningful when reusing a
-    # playlist that already had tracks). Add-only mode leaves existing tracks alone.
+    # Mirror mode: make Tidal match the source exactly — remove any surplus copies (tracks no
+    # longer in the source, or extra duplicates beyond what the source has). Only meaningful
+    # when reusing a playlist that already had tracks; add-only mode leaves existing alone.
     if run.mode == "mirror" and reuse:
-        to_remove = [it for it in items if it["track_id"] not in desired]
-        if to_remove:
-            tidal.remove_items(tidal_playlist_id, to_remove)
-            logger.info("Mirror: removed %d track(s) no longer in source", len(to_remove))
+        surplus = existing - desired  # Counter diff keeps only positive overflow per id
+        if surplus:
+            items_by_id: dict[str, list[dict]] = defaultdict(list)
+            for it in items:
+                items_by_id[it["track_id"]].append(it)
+            to_remove = [it for tid, n in surplus.items() for it in items_by_id[tid][:n]]
+            if to_remove:
+                tidal.remove_items(tidal_playlist_id, to_remove)
+                logger.info("Mirror: removed %d surplus track(s)", len(to_remove))
 
     run.unmatched = json.dumps(unmatched)
     run.status = "partial" if run.not_found else "success"
