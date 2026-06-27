@@ -3,6 +3,7 @@
 export function nav() {
   return {
     view: 'home', // 'home' | 'sync' | 'scheduled' | 'history'
+    mobileNav: false, // hamburger menu open state (mobile only)
     navItems: [
       { id: 'home', label: 'Home' },
       { id: 'sync', label: 'Sync' },
@@ -12,6 +13,7 @@ export function nav() {
 
     setView(v) {
       this.view = v;
+      this.mobileNav = false; // collapse the mobile menu after a selection
       if (v === 'scheduled') {
         this.loadMappings();
         if (!this.playlists.length) this.loadPlaylists();

@@ -33,6 +33,33 @@
       <button @click="showSettings = false" aria-label="Close" class="grid place-items-center w-8 h-8 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800">✕</button>
     </div>
 
+    <!-- Connections -->
+    <h3 class="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-3">Connections</h3>
+    <div class="space-y-2 mb-8">
+      <template x-for="svc in ['spotify', 'tidal']" :key="svc">
+        <div class="flex items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-950/40 px-3 py-2.5">
+          <span
+            class="w-2 h-2 rounded-full shrink-0"
+            :class="session[svc].connected ? (svc === 'spotify' ? 'bg-emerald-400' : 'bg-accent-400') : 'bg-neutral-600'"
+          ></span>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm capitalize text-neutral-200" x-text="svc"></p>
+            <p class="text-[11px]" :class="session[svc].connected ? 'text-neutral-500' : 'text-neutral-600'" x-text="session[svc].connected ? 'Connected' : 'Not connected'"></p>
+          </div>
+          <button
+            x-show="session[svc].connected"
+            @click="disconnect(svc)"
+            class="text-xs rounded-lg border border-neutral-700 text-neutral-300 hover:border-red-500/40 hover:text-red-300 px-3 py-1.5 transition shrink-0"
+          >Disconnect</button>
+          <button
+            x-show="!session[svc].connected"
+            @click="connect(svc)"
+            class="text-xs rounded-lg bg-accent-500 hover:bg-accent-400 text-neutral-950 font-medium px-3 py-1.5 transition shrink-0"
+          >Connect</button>
+        </div>
+      </template>
+    </div>
+
     <h3 class="text-xs font-medium text-neutral-400 uppercase tracking-wide mb-3">Accent theme</h3>
     <div class="grid grid-cols-6 gap-2.5">
       <template x-for="t in themes" :key="t.id">
