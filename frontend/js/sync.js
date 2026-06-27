@@ -79,5 +79,49 @@ export function sync() {
         queued: 'text-neutral-300 bg-neutral-700/40',
       }[status] || 'text-neutral-300 bg-neutral-700/40';
     },
+
+    // "3m ago" / "2h ago" / "Jun 27" — compact relative time for the run rows.
+    formatRelative(iso) {
+      if (!iso) return '—';
+      const then = new Date(iso).getTime();
+      const secs = Math.round((Date.now() - then) / 1000);
+      if (secs < 45) return 'just now';
+      if (secs < 90) return '1m ago';
+      const mins = Math.round(secs / 60);
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.round(mins / 60);
+      if (hrs < 24) return `${hrs}h ago`;
+      const days = Math.round(hrs / 24);
+      if (days < 7) return `${days}d ago`;
+      return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' });
+    },
+
+    // Wall-clock duration of a finished run, e.g. "1m 12s".
+    runDuration(run) {
+      if (!run.started_at || !run.finished_at) return '—';
+      let secs = Math.round((new Date(run.finished_at) - new Date(run.started_at)) / 1000);
+      if (secs < 0) secs = 0;
+      if (secs < 60) return `${secs}s`;
+      const mins = Math.floor(secs / 60);
+      return `${mins}m ${secs % 60}s`;
+    },
+
+    // One-line outcome summary shown at the top of the expanded panel.
+    runHeadline(run) {
+      const matched = run.total - run.not_found;
+      if (run.status === 'error') return 'Sync failed before completing.';
+      if (run.status === 'success') {
+        if (run.total === 0) return 'Nothing to sync — playlist was empty.';
+        if (run.added === 0) return `Already up to date — all ${run.total} tracks present on Tidal.`;
+        return `Added ${run.added} of ${matched} matched track${matched === 1 ? '' : 's'} to Tidal.`;
+      }
+      if (run.status === 'partial') return `Added ${run.added}, but ${run.not_found} track${run.not_found === 1 ? '' : 's'} weren't found on Tidal.`;
+      if (run.status === 'running') return `Syncing… ${run.processed} of ${run.total} processed.`;
+      return 'Queued.';
+    },
+
+    tidalPlaylistUrl(id) {
+      return id ? `https://listen.tidal.com/playlist/${id}` : null;
+    },
   };
 }
