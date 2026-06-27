@@ -59,6 +59,7 @@ export const api = {
   // Scheduled-sync mappings
   listMappings: () => request('/api/mappings'),
   createMapping: (body) => request('/api/mappings', { method: 'POST', body: JSON.stringify(body) }),
+  bulkCreateMappings: (body) => request('/api/mappings/bulk', { method: 'POST', body: JSON.stringify(body) }),
   updateMapping: (id, body) => request(`/api/mappings/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   deleteMapping: (id) => request(`/api/mappings/${id}`, { method: 'DELETE' }),
   runMapping: (id) => request(`/api/mappings/${id}/run`, { method: 'POST' }),

@@ -9,10 +9,13 @@ from backend.common.auth import require_auth
 from backend.core import scheduler
 from backend.deps import get_session
 from backend.models.schemas import (
+    MappingBulkCreate,
+    MappingBulkResult,
     MappingCreate,
     MappingUpdate,
     MappingView,
     MessageResponse,
+    PlaylistRef,
 )
 from backend.models.tables import Mapping, SyncRun, User
 
@@ -91,6 +94,62 @@ def create_mapping(
     session.refresh(mapping)
     scheduler.schedule_mapping(mapping)
     return _view(session, mapping)
+
+
+@router.post("/bulk", response_model=MappingBulkResult)
+def bulk_create_mappings(
+    body: MappingBulkCreate,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_auth),
+) -> MappingBulkResult:
+    """Schedule several playlists at once with one shared schedule. Playlists that already
+    have a schedule are skipped and reported; manual-only links get upgraded in place.
+    With ``stagger_minutes`` > 0, each created schedule starts ``stagger_minutes`` later than
+    the previous one (minutes roll into the hour, the hour wraps at 24)."""
+    created: list[Mapping] = []
+    skipped: list[PlaylistRef] = []
+    for item in body.playlists:
+        existing = session.exec(
+            select(Mapping).where(
+                Mapping.user_id == user.id,
+                Mapping.spotify_playlist_id == item.spotify_playlist_id,
+            )
+        ).first()
+        if existing is not None and existing.frequency is not None:
+            skipped.append(item)
+            continue
+
+        # Offset by position among the playlists actually being created (skips leave no gap).
+        total_minute = body.at_minute + len(created) * body.stagger_minutes
+        at_minute = total_minute % 60
+        if body.frequency == "hourly":
+            at_hour = None
+        else:
+            at_hour = ((body.at_hour or 0) + total_minute // 60) % 24
+
+        mapping = existing or Mapping(
+            user_id=user.id,
+            spotify_playlist_id=item.spotify_playlist_id,
+            spotify_name=item.spotify_name,
+        )
+        mapping.spotify_name = item.spotify_name
+        mapping.enabled = body.enabled
+        mapping.mode = body.mode
+        mapping.frequency = body.frequency
+        mapping.at_hour = at_hour
+        mapping.at_minute = at_minute
+        mapping.day_of_week = body.day_of_week
+        mapping.day_of_month = body.day_of_month
+        session.add(mapping)
+        created.append(mapping)
+
+    session.commit()
+    views: list[MappingView] = []
+    for mapping in created:
+        session.refresh(mapping)
+        scheduler.schedule_mapping(mapping)
+        views.append(_view(session, mapping))
+    return MappingBulkResult(created=views, skipped=skipped)
 
 
 @router.patch("/{mapping_id}", response_model=MappingView)

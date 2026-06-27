@@ -1,7 +1,26 @@
 <section class="space-y-5">
-  <div>
-    <h2 class="text-lg font-semibold">Schedules</h2>
-    <p class="text-xs text-neutral-500">Your automatic syncs. Create new ones from the <button @click="setView('sync')" class="text-accent-300 hover:text-accent-200 underline-offset-2 hover:underline">Sync</button> page.</p>
+  <div class="flex items-start justify-between gap-3">
+    <div>
+      <h2 class="text-lg font-semibold">Schedules</h2>
+      <p class="text-xs text-neutral-500">Your automatic syncs. Create new ones from the <button @click="setView('sync')" class="text-accent-300 hover:text-accent-200 underline-offset-2 hover:underline">Sync</button> page.</p>
+    </div>
+    <div x-show="mappings.length > 1" x-data="vfselect(sortOpts)" x-modelable="value" x-model="sortBy" @click.away="open = false" class="relative w-40 shrink-0">
+      <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-2 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-xs text-neutral-300 hover:border-neutral-700 focus:outline-none transition">
+        <span class="flex items-center gap-1.5 min-w-0">
+          <svg class="w-3.5 h-3.5 text-neutral-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4 4m0 0l-4 4m4-4H7" /></svg>
+          <span class="truncate" x-text="selectedLabel"></span>
+        </span>
+        <svg class="w-3.5 h-3.5 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+      </button>
+      <div x-show="open" x-transition.opacity.duration.100ms class="absolute right-0 z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl py-1">
+        <template x-for="o in options" :key="o.value">
+          <button type="button" @click="pick(o.value); setSort(o.value)" class="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-xs transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'">
+            <span x-text="o.label"></span>
+            <svg x-show="isSelected(o.value)" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+          </button>
+        </template>
+      </div>
+    </div>
   </div>
 
   <!-- Loading / empty -->
@@ -13,7 +32,7 @@
 
   <!-- List -->
   <div class="space-y-3">
-    <template x-for="m in mappings" :key="m.id">
+    <template x-for="m in sortedMappings()" :key="m.id">
       <div class="group rounded-xl border border-neutral-800 bg-neutral-900/40 p-4 transition-all duration-200 hover:border-accent-500/40 hover:bg-neutral-900/70 hover:shadow-lg hover:shadow-black/30">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-lg bg-accent-500/10 text-accent-400 grid place-items-center shrink-0 transition group-hover:bg-accent-500/20" :class="!m.enabled ? 'opacity-40' : ''">

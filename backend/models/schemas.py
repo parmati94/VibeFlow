@@ -80,6 +80,17 @@ class MappingUpdate(ScheduleFields):
     enabled: bool | None = None
 
 
+class PlaylistRef(BaseModel):
+    spotify_playlist_id: str
+    spotify_name: str
+
+
+class MappingBulkCreate(ScheduleFields):
+    playlists: list[PlaylistRef]
+    enabled: bool = True
+    stagger_minutes: int = 0  # 0 = every playlist starts at the same time
+
+
 class MappingView(BaseModel):
     id: int
     spotify_playlist_id: str
@@ -98,3 +109,8 @@ class MappingView(BaseModel):
     last_status: str | None = None
     next_run_at: datetime | None = None
     created_at: datetime
+
+
+class MappingBulkResult(BaseModel):
+    created: list[MappingView]
+    skipped: list[PlaylistRef]  # already had a schedule — left untouched

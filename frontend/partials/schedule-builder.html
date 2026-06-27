@@ -18,8 +18,8 @@
   >
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
-        <h2 class="text-base font-semibold" x-text="formMode === 'create' ? 'New schedule' : 'Edit schedule'"></h2>
-        <p class="text-xs text-neutral-500 truncate" x-text="sform.spotify_name"></p>
+        <h2 class="text-base font-semibold" x-text="formMode === 'edit' ? 'Edit schedule' : (bulkMode ? `Schedule ${bulkItems.length} playlists` : 'New schedule')"></h2>
+        <p class="text-xs text-neutral-500 truncate" x-text="bulkMode ? 'One schedule applied to all' : sform.spotify_name"></p>
       </div>
       <button @click="closeForm()" aria-label="Close" class="grid place-items-center w-8 h-8 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800">✕</button>
     </div>
@@ -161,11 +161,47 @@
         </div>
         <p class="text-[11px] text-neutral-500 mt-1.5" x-text="sform.mode === 'mirror' ? 'Tidal will match Spotify exactly — new tracks added, removed ones deleted.' : 'New tracks are added; nothing already on Tidal is removed.'"></p>
       </div>
+
+      <!-- Bulk: optional stagger so N schedules don't all fire on the same minute -->
+      <template x-if="bulkMode">
+        <div class="space-y-2.5 rounded-lg border border-neutral-800 bg-neutral-950/40 p-3">
+          <div class="flex items-center justify-between gap-3">
+            <div class="select-none min-w-0">
+              <p class="text-sm text-neutral-200">Stagger start times</p>
+              <p class="text-[11px] text-neutral-500">Spread runs out instead of all at once</p>
+            </div>
+            <button
+              type="button"
+              @click="stagger = !stagger"
+              class="relative w-9 h-5 rounded-full transition shrink-0"
+              :class="stagger ? 'bg-accent-500' : 'bg-neutral-700'"
+            >
+              <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform" :class="stagger ? 'translate-x-4' : ''"></span>
+            </button>
+          </div>
+          <div x-show="stagger" class="flex items-center gap-2">
+            <span class="text-xs text-neutral-500">Every</span>
+            <div x-data="vfselect(staggerOpts)" x-modelable="value" x-model="staggerStep" @click.away="open = false" class="relative w-16">
+              <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-1 rounded-lg border border-neutral-800 bg-neutral-950 px-2.5 py-2 text-sm hover:border-neutral-700 focus:outline-none transition">
+                <span x-text="selectedLabel"></span>
+                <svg class="w-3.5 h-3.5 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              <div x-show="open" x-transition.opacity.duration.100ms class="absolute z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl py-1">
+                <template x-for="o in options" :key="o.value">
+                  <button type="button" @click="pick(o.value)" class="w-full text-left px-3 py-1.5 text-sm transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'" x-text="o.label"></button>
+                </template>
+              </div>
+            </div>
+            <span class="text-xs text-neutral-500">min apart</span>
+          </div>
+          <p class="text-[11px] text-accent-300/90" x-text="bulkPreview()"></p>
+        </div>
+      </template>
     </div>
 
     <div class="flex gap-2 justify-end pt-1">
       <button @click="closeForm()" class="rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-800 text-sm px-4 py-2 transition">Cancel</button>
-      <button @click="saveForm()" class="rounded-lg bg-accent-500 hover:bg-accent-400 text-neutral-950 font-medium text-sm px-4 py-2 transition" x-text="formMode === 'create' ? 'Create schedule' : 'Save'"></button>
+      <button @click="saveForm()" class="rounded-lg bg-accent-500 hover:bg-accent-400 text-neutral-950 font-medium text-sm px-4 py-2 transition" x-text="formMode === 'edit' ? 'Save' : (bulkMode ? `Create ${bulkItems.length} schedules` : 'Create schedule')"></button>
     </div>
   </div>
 </div>
