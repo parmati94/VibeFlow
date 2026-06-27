@@ -28,7 +28,7 @@ services:
       - ./backend:/app/backend                          # backend live-reload via uvicorn --reload
       - ./frontend/dist:/usr/share/nginx/html           # host-built frontend
       - ./supervisor/supervisord.dev.conf:/etc/supervisor/conf.d/supervisord.conf:ro
-      - vibeflow-dev-data:/app/data
+      - ./data:/app/data                                # SQLite db in the working dir (gitignored)
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
@@ -36,6 +36,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-
-volumes:
-  vibeflow-dev-data:

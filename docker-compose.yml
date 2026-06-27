@@ -18,7 +18,9 @@ services:
       - ENABLE_LOGIN=false
       - LOG_LEVEL=INFO
     volumes:
-      - vibeflow-data:/app/data   # SQLite: credentials, mappings, run history, match cache
+      # SQLite (credentials, mappings, run history, match cache). Point this at a
+      # persistent host path you control, e.g. /home/youruser/vibeflow/data.
+      - /home/youruser/vibeflow/data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/healthz"]
@@ -26,6 +28,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
-
-volumes:
-  vibeflow-data:
