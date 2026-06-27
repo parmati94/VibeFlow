@@ -34,6 +34,10 @@ class PasswordChangeRequest(BaseModel):
     new_password: str
 
 
+class PreferencesRequest(BaseModel):
+    allow_duplicates: bool
+
+
 @router.get("/status")
 def auth_status(
     request: Request,
@@ -46,7 +50,12 @@ def auth_status(
         "authenticated": user is not None,
         "needs_setup": users.needs_setup(session),
         "user": (
-            {"id": user.id, "username": user.username, "is_admin": user.is_admin}
+            {
+                "id": user.id,
+                "username": user.username,
+                "is_admin": user.is_admin,
+                "allow_duplicates": user.allow_duplicates,
+            }
             if user
             else None
         ),
@@ -105,3 +114,20 @@ def change_password(
         raise HTTPException(status_code=400, detail="Current password is incorrect.")
     users.set_password(session, user, body.new_password)
     return {"success": True}
+
+
+@router.post("/preferences")
+def update_preferences(
+    body: PreferencesRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """Update the current user's sync preferences (currently just duplicate handling)."""
+    user = current_user(request, session, settings)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Not authenticated.")
+    user.allow_duplicates = body.allow_duplicates
+    session.add(user)
+    session.commit()
+    return {"success": True, "allow_duplicates": user.allow_duplicates}

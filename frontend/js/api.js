@@ -45,6 +45,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
     }),
+  updatePreferences: (prefs) =>
+    request('/api/auth/preferences', { method: 'POST', body: JSON.stringify(prefs) }),
 
   // User management (admin only)
   listUsers: () => request('/api/users'),

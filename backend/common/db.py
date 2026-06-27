@@ -34,6 +34,10 @@ engine = create_engine(
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
+    # Add any new columns before bootstrap: _bootstrap_admin() runs an ORM query over User,
+    # which references every model column — so a freshly-added column must exist on the table
+    # first (on an upgraded DB create_all won't have added it).
+    _add_columns()
     admin_id = _bootstrap_admin()
     _migrate(admin_id)
 
@@ -57,6 +61,9 @@ def _bootstrap_admin() -> int:
 # Columns added after a table first shipped. SQLite create_all() only creates missing
 # tables, never new columns, so add them by hand (additive, non-destructive).
 _TABLE_ADDS = {
+    "user": {
+        "allow_duplicates": "BOOLEAN DEFAULT 0",
+    },
     "mapping": {
         "frequency": "VARCHAR",
         "at_hour": "INTEGER",
@@ -74,17 +81,27 @@ _TABLE_ADDS = {
 }
 
 
-def _migrate(admin_id: int) -> None:
+def _add_columns() -> None:
+    """Additive schema migration: add columns that postdate a table's first ship. Safe to run
+    before bootstrap (no data dependencies). SQLite create_all() only creates missing tables."""
     with engine.begin() as conn:
         for table, adds in _TABLE_ADDS.items():
             existing = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
             for col, ddl in adds.items():
                 if col not in existing:
                     conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
-            # Backfill rows that predate the user_id column onto the bootstrap admin.
-            conn.exec_driver_sql(
-                f"UPDATE {table} SET user_id = {admin_id} WHERE user_id IS NULL"
-            )
+
+
+def _migrate(admin_id: int) -> None:
+    """Data migration: attach pre-multi-user rows to the bootstrap admin and rebuild the
+    credentials PK. Runs after columns exist and the admin is known."""
+    with engine.begin() as conn:
+        for table, adds in _TABLE_ADDS.items():
+            # Backfill ownership only on tables that actually have a user_id (e.g. not `user`).
+            if "user_id" in adds:
+                conn.exec_driver_sql(
+                    f"UPDATE {table} SET user_id = {admin_id} WHERE user_id IS NULL"
+                )
         _migrate_credentials_pk(conn, admin_id)
 
 
