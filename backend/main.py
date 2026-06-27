@@ -20,7 +20,7 @@ from backend.common.config import get_settings
 from backend.common.db import init_db
 from backend.common.logging_config import logger
 from backend.core import scheduler
-from backend.routers import appauth, mappings, oauth, playlists, sync, system
+from backend.routers import appauth, mappings, oauth, playlists, sync, system, users
 
 settings = get_settings()
 
@@ -35,11 +35,11 @@ async def lifespan(app: FastAPI):
             "not real OAuth. Never enable this in a real deploy."
         )
     if settings.enable_login:
-        logger.info("Login gate ENABLED (user '%s').", settings.auth_username)
+        logger.info("Login gate ENABLED (per-user accounts; first run shows setup screen).")
     else:
         logger.warning(
-            "Login gate DISABLED — anyone who can reach this origin has full access to the "
-            "connected accounts. Set ENABLE_LOGIN=true + USERNAME/PASSWORD on a public deploy."
+            "Login gate DISABLED — anyone who can reach this origin acts as the bootstrap "
+            "admin with full access. Set ENABLE_LOGIN=true on a public deploy."
         )
     scheduler.start()
     yield
@@ -56,6 +56,7 @@ app.add_middleware(
 
 app.include_router(system.router)
 app.include_router(appauth.router)
+app.include_router(users.router)
 app.include_router(oauth.router)
 app.include_router(playlists.router)
 app.include_router(sync.router)

@@ -8,13 +8,14 @@ services:
       - "5570:80"
     # Secrets live in ./.env at the project root (gitignored); see .env.example.
     env_file:
-      - ./.env   # SPOTIFY_CLIENT_ID/SECRET, TIDAL_CLIENT_ID, SESSION_SECRET, USERNAME, PASSWORD
+      - ./.env   # SPOTIFY_CLIENT_ID/SECRET, TIDAL_CLIENT_ID, SESSION_SECRET
     environment:
       - TZ=America/New_York
       # Must match the Redirect URIs registered on the Spotify + Tidal apps and this origin.
       - SPOTIFY_REDIRECT_URI=http://127.0.0.1:5570/auth/spotify/callback
       - TIDAL_REDIRECT_URI=http://127.0.0.1:5570/auth/tidal/callback
-      # Login gate — recommended on a public origin (set USERNAME/PASSWORD in .env).
+      # Login gate — recommended on a public origin. First run shows an account-setup screen;
+      # the admin then manages users in-app (no USERNAME/PASSWORD env vars).
       - ENABLE_LOGIN=false
       - LOG_LEVEL=INFO
     volumes:

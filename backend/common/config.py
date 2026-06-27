@@ -50,13 +50,12 @@ class Settings(BaseSettings):
     # --- Sessions ---
     session_secret: str = Field("dev-secret-change-me", alias="SESSION_SECRET")
 
-    # --- App login gate (self-hosted; same env vars as the lens apps) ---
-    # With ENABLE_LOGIN on, the whole app sits behind a username/password so a public origin
-    # doesn't expose the owner's connected accounts. Single-user today; the session stores the
-    # logged-in username as the identity seam that per-user auth would build on later.
+    # --- App login gate ---
+    # With ENABLE_LOGIN on, the whole app sits behind per-user accounts (stored in the DB,
+    # bcrypt-hashed) so a public origin doesn't expose anyone's connected accounts. When off
+    # (local/dev), every request runs as the bootstrap admin. Accounts are created in-app
+    # (first-run setup + admin-managed users), NOT via env vars.
     enable_login: bool = Field(False, alias="ENABLE_LOGIN")
-    auth_username: str = Field("admin", alias="USERNAME")
-    auth_password: str = Field("admin", alias="PASSWORD")
 
     # --- Storage ---
     # SQLite file holding credentials, mappings, run history, match cache. Volume-mounted

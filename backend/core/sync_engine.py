@@ -31,8 +31,8 @@ def run_sync(run_id: int) -> None:
         session.add(run)
         session.commit()
 
-        spotify_token = store.valid_spotify_token(session)
-        tidal_token = store.valid_tidal_token(session)
+        spotify_token = store.valid_spotify_token(session, run.user_id)
+        tidal_token = store.valid_tidal_token(session, run.user_id)
         if not spotify_token or not tidal_token:
             _fail(session, run, "Both Spotify and Tidal must be connected.")
             return

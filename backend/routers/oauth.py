@@ -21,8 +21,9 @@ from backend.common.auth import require_auth
 from backend.common.config import Settings, get_settings
 from backend.common.logging_config import logger
 from backend.deps import get_session
+from backend.models.tables import User
 
-router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(require_auth)])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 # ── Spotify ──────────────────────────────────────────────────────────────────
@@ -30,6 +31,7 @@ router = APIRouter(prefix="/auth", tags=["auth"], dependencies=[Depends(require_
 def spotify_login(
     session: Session = Depends(get_session),
     settings: Settings = Depends(get_settings),
+    user: User = Depends(require_auth),
 ) -> RedirectResponse:
     # Dev bypass: mint + persist tokens from a pre-captured refresh token (no browser, no
     # registered redirect URI). Gated by DEV_AUTH; never reached in a real deploy.
@@ -37,7 +39,7 @@ def spotify_login(
         try:
             token_info = spotify_auth.refresh(settings.spotify_dev_refresh_token)
             token_info.setdefault("refresh_token", settings.spotify_dev_refresh_token)
-            store.save_spotify(session, token_info)
+            store.save_spotify(session, user.id, token_info)
             logger.warning("DEV_AUTH: Spotify connected via refresh-token bypass.")
             return RedirectResponse(url="/?connected=spotify")
         except Exception as exc:  # noqa: BLE001
@@ -51,14 +53,16 @@ def spotify_login(
 
 @router.get("/spotify/callback")
 def spotify_callback(
-    request: Request, session: Session = Depends(get_session)
+    request: Request,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_auth),
 ) -> RedirectResponse:
     code = request.query_params.get("code")
     if not code:
         return RedirectResponse(url="/?error=spotify_no_code")
     try:
         token_info = spotify_auth.exchange_code(code)
-        store.save_spotify(session, token_info)
+        store.save_spotify(session, user.id, token_info)
     except Exception as exc:  # noqa: BLE001
         logger.error("Spotify code exchange failed: %s", exc)
         return RedirectResponse(url="/?error=spotify_auth_failed")
@@ -67,15 +71,19 @@ def spotify_callback(
 
 
 @router.post("/spotify/logout")
-def spotify_logout(session: Session = Depends(get_session)) -> dict:
-    store.disconnect(session, "spotify")
+def spotify_logout(
+    session: Session = Depends(get_session), user: User = Depends(require_auth)
+) -> dict:
+    store.disconnect(session, user.id, "spotify")
     return {"message": "Spotify disconnected."}
 
 
 # ── Tidal (PKCE) ─────────────────────────────────────────────────────────────
 @router.get("/tidal/login")
 def tidal_login(
-    request: Request, settings: Settings = Depends(get_settings)
+    request: Request,
+    settings: Settings = Depends(get_settings),
+    user: User = Depends(require_auth),
 ) -> RedirectResponse:
     if not settings.tidal_configured:
         return RedirectResponse(url="/?error=tidal_not_configured")
@@ -89,7 +97,9 @@ def tidal_login(
 
 @router.get("/tidal/callback")
 def tidal_callback(
-    request: Request, session: Session = Depends(get_session)
+    request: Request,
+    session: Session = Depends(get_session),
+    user: User = Depends(require_auth),
 ) -> RedirectResponse:
     error = request.query_params.get("error")
     if error:
@@ -108,7 +118,7 @@ def tidal_callback(
         return RedirectResponse(url="/?error=tidal_missing_verifier")
     try:
         token = tidal_auth.exchange_code(code, verifier)
-        store.save_tidal(session, token)
+        store.save_tidal(session, user.id, token)
     except Exception as exc:  # noqa: BLE001
         logger.error("Tidal token exchange failed: %s", exc)
         return RedirectResponse(url="/?error=tidal_auth_failed")
@@ -119,6 +129,8 @@ def tidal_callback(
 
 
 @router.post("/tidal/logout")
-def tidal_logout(session: Session = Depends(get_session)) -> dict:
-    store.disconnect(session, "tidal")
+def tidal_logout(
+    session: Session = Depends(get_session), user: User = Depends(require_auth)
+) -> dict:
+    store.disconnect(session, user.id, "tidal")
     return {"message": "Tidal disconnected."}

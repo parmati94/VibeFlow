@@ -8,6 +8,7 @@ import { playlists } from './playlists.js';
 import { sync } from './sync.js';
 import { theme } from './theme.js';
 import { toast } from './toast.js';
+import { users } from './users.js';
 
 document.addEventListener('alpine:init', () => {
   Alpine.data('app', () => ({
@@ -19,6 +20,7 @@ document.addEventListener('alpine:init', () => {
     ...playlists(),
     ...sync(),
     ...mappings(),
+    ...users(),
 
     booting: true,
     loginEnabled: false,
@@ -53,6 +55,23 @@ document.addEventListener('alpine:init', () => {
       return this.historyTab === 'scheduled' ? this.scheduledRuns : this.manualRuns;
     },
 
+    // ── Home dashboard ──
+    get upcomingSchedules() {
+      return this.mappings
+        .filter((m) => m.enabled && m.next_run_at)
+        .sort((a, b) => new Date(a.next_run_at) - new Date(b.next_run_at))
+        .slice(0, 3);
+    },
+    get recentActivity() {
+      return this.history.slice(0, 3);
+    },
+    get totalTracksSynced() {
+      return this.history.reduce((sum, r) => sum + (r.added || 0), 0);
+    },
+    get lastRun() {
+      return this.history[0] || null;
+    },
+
     async init() {
       this.initTheme();
       this.handleAuthRedirect();
@@ -61,10 +80,17 @@ document.addEventListener('alpine:init', () => {
       try {
         const status = await api.authStatus();
         this.loginEnabled = status.enabled;
+        if (status.enabled && status.needs_setup) {
+          window.location.href = '/login.html';
+          return;
+        }
         if (status.enabled && !status.authenticated) {
           window.location.href = '/login.html';
           return;
         }
+        this.currentUser = status.user;
+        this.isAdmin = !!(status.user && status.user.is_admin);
+        if (this.isAdmin) this.loadUsers();
       } catch (e) {
         /* status is open; if it fails treat as no gate */
       }
