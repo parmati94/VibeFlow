@@ -41,10 +41,10 @@
           <h1 class="text-2xl font-bold tracking-tight">
             <span class="text-neutral-100">Vibe</span><span class="text-accent-400">Flow</span>
           </h1>
-          <p class="text-sm text-neutral-500 mt-1.5">Spotify → Tidal playlist sync</p>
+          <p class="text-sm text-neutral-500 mt-1.5" x-text="mode === 'setup' ? 'Create your admin account' : 'Spotify → Tidal playlist sync'"></p>
         </div>
 
-        <form @submit.prevent="login()" class="space-y-4">
+        <form @submit.prevent="submit()" class="space-y-4">
           <div>
             <label class="block text-xs font-medium text-neutral-400 mb-1.5 uppercase tracking-wide">Username</label>
             <div class="relative">
@@ -69,8 +69,23 @@
               <input
                 type="password"
                 x-model="password"
-                autocomplete="current-password"
+                :autocomplete="mode === 'setup' ? 'new-password' : 'current-password'"
                 required
+                class="w-full bg-neutral-950/70 border border-neutral-800 rounded-lg pl-9 pr-3 py-2.5 text-sm text-neutral-100 focus:outline-none focus:border-accent-500/60 focus:ring-2 focus:ring-accent-500/25 transition"
+              />
+            </div>
+          </div>
+          <div x-show="mode === 'setup'" x-cloak>
+            <label class="block text-xs font-medium text-neutral-400 mb-1.5 uppercase tracking-wide">Confirm password</label>
+            <div class="relative">
+              <svg class="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11v3m-6 5h12a2 2 0 002-2v-5a2 2 0 00-2-2H6a2 2 0 00-2 2v5a2 2 0 002 2zm9-9V7a4 4 0 00-8 0v3h8z" />
+              </svg>
+              <input
+                type="password"
+                x-model="confirm"
+                autocomplete="new-password"
+                :required="mode === 'setup'"
                 class="w-full bg-neutral-950/70 border border-neutral-800 rounded-lg pl-9 pr-3 py-2.5 text-sm text-neutral-100 focus:outline-none focus:border-accent-500/60 focus:ring-2 focus:ring-accent-500/25 transition"
               />
             </div>
@@ -83,8 +98,8 @@
             :disabled="loading"
             class="w-full bg-accent-500 hover:bg-accent-400 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-950 font-semibold py-2.5 px-4 rounded-lg transition shadow-lg shadow-accent-500/20 hover:shadow-accent-500/30 text-sm"
           >
-            <span x-show="!loading">Sign in</span>
-            <span x-show="loading">Signing in…</span>
+            <span x-show="!loading" x-text="mode === 'setup' ? 'Create account' : 'Sign in'"></span>
+            <span x-show="loading" x-text="mode === 'setup' ? 'Creating…' : 'Signing in…'"></span>
           </button>
         </form>
       </div>

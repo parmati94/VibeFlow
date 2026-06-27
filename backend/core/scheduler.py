@@ -108,6 +108,7 @@ def trigger_mapping_sync(mapping_id: int) -> int | None:
         if mapping is None:
             return None
         run = SyncRun(
+            user_id=mapping.user_id,
             mapping_id=mapping.id,
             trigger="scheduled",
             mode=mapping.mode,

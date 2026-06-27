@@ -1,8 +1,9 @@
 """Persisted tables (SQLModel / SQLite).
 
-Single-user app: one row per provider in `credentials`. Tokens live here (not just the
-session cookie) so scheduled, headless syncs can authenticate without a browser. Sync
-results and the Spotify→Tidal match cache persist so re-syncs are fast and resumable.
+Multi-user app: every user owns their own provider tokens, mappings, and run history, all
+scoped by `user_id`. Tokens live here (not just the session cookie) so scheduled, headless
+syncs can authenticate without a browser. The Spotify→Tidal match cache (`TrackMatch`) is
+deliberately global — a track↔track mapping is user-agnostic and benefits everyone.
 """
 
 from __future__ import annotations
@@ -16,10 +17,22 @@ def _utcnow() -> datetime:
     return datetime.utcnow()
 
 
-class Credentials(SQLModel, table=True):
-    """OAuth tokens for one provider. provider is the PK ('spotify' | 'tidal')."""
+class User(SQLModel, table=True):
+    """An app account. `password_hash` is None until the account is set up (the bootstrap
+    admin is created empty on first launch and its password is set via the setup screen)."""
 
-    provider: str = Field(primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
+    username: str = Field(index=True, unique=True)
+    password_hash: str | None = None  # None = not yet set up
+    is_admin: bool = False
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class Credentials(SQLModel, table=True):
+    """OAuth tokens for one user's provider. PK is (user_id, provider)."""
+
+    user_id: int = Field(foreign_key="user.id", primary_key=True)
+    provider: str = Field(primary_key=True)  # 'spotify' | 'tidal'
     access_token: str
     refresh_token: str | None = None
     expires_at: float = 0.0  # epoch seconds
@@ -33,6 +46,7 @@ class Mapping(SQLModel, table=True):
     target a manual sync writes to so re-syncs reuse the same Tidal playlist."""
 
     id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
     spotify_playlist_id: str
     spotify_name: str
     tidal_playlist_id: str | None = None
@@ -61,6 +75,7 @@ class SyncRun(SQLModel, table=True):
     can poll for a progress bar; terminal status is success | partial | error."""
 
     id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
     mapping_id: int | None = Field(default=None, foreign_key="mapping.id")
     trigger: str = "manual"  # manual | scheduled (how the run was started)
     mode: str = "add"        # add | mirror (effective for this run)

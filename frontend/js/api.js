@@ -40,6 +40,21 @@ export const api = {
   // App login gate
   authStatus: () => request('/api/auth/status'),
   logout: () => request('/api/auth/logout', { method: 'POST' }),
+  changePassword: (currentPassword, newPassword) =>
+    request('/api/auth/password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    }),
+
+  // User management (admin only)
+  listUsers: () => request('/api/users'),
+  createUser: (body) => request('/api/users', { method: 'POST', body: JSON.stringify(body) }),
+  deleteUser: (id) => request(`/api/users/${id}`, { method: 'DELETE' }),
+  resetUserPassword: (id, newPassword) =>
+    request(`/api/users/${id}/password`, {
+      method: 'POST',
+      body: JSON.stringify({ new_password: newPassword }),
+    }),
 
   // Scheduled-sync mappings
   listMappings: () => request('/api/mappings'),
