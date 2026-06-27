@@ -5,8 +5,8 @@ export function nav() {
     view: 'home', // 'home' | 'sync' | 'scheduled' | 'history'
     navItems: [
       { id: 'home', label: 'Home' },
-      { id: 'sync', label: 'Sync once' },
-      { id: 'scheduled', label: 'Scheduled' },
+      { id: 'sync', label: 'Sync' },
+      { id: 'scheduled', label: 'Schedules' },
       { id: 'history', label: 'History' },
     ],
 

@@ -1,0 +1,151 @@
+<!-- Schedule builder modal — shared by "Schedule" on the Sync page (create) and the edit
+     pencil on the Schedules page (edit). Bound to the single shared sform. -->
+<div
+  x-show="showForm"
+  x-transition.opacity
+  @keydown.escape.window="closeForm()"
+  class="fixed inset-0 z-[110] flex items-center justify-center p-4"
+  style="display:none"
+>
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="closeForm()"></div>
+
+  <div
+    x-show="showForm"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0 translate-y-2"
+    x-transition:enter-end="opacity-100 translate-y-0"
+    class="relative w-full max-w-md rounded-2xl border border-neutral-800 bg-neutral-900 shadow-2xl p-6 space-y-4"
+  >
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h2 class="text-base font-semibold" x-text="formMode === 'create' ? 'New schedule' : 'Edit schedule'"></h2>
+        <p class="text-xs text-neutral-500 truncate" x-text="sform.spotify_name"></p>
+      </div>
+      <button @click="closeForm()" aria-label="Close" class="grid place-items-center w-8 h-8 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800">✕</button>
+    </div>
+
+    <div class="space-y-3">
+      <!-- Frequency -->
+      <div>
+        <label class="text-xs text-neutral-500 mb-1 block">Frequency</label>
+        <div x-data="vfselect(freqOpts)" x-modelable="value" x-model="sform.frequency" @click.away="open = false" class="relative">
+          <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-2 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm hover:border-neutral-700 focus:border-accent-500/60 focus:outline-none transition">
+            <span x-text="selectedLabel"></span>
+            <svg class="w-4 h-4 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div x-show="open" x-transition.opacity.duration.100ms class="absolute z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl py-1">
+            <template x-for="o in options" :key="o.value">
+              <button type="button" @click="pick(o.value)" class="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-sm transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'">
+                <span x-text="o.label"></span>
+                <svg x-show="isSelected(o.value)" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly: day -->
+      <div x-show="sform.frequency === 'weekly'">
+        <label class="text-xs text-neutral-500 mb-1 block">Day</label>
+        <div x-data="vfselect(dayOpts)" x-modelable="value" x-model="sform.day_of_week" @click.away="open = false" class="relative">
+          <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-2 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm hover:border-neutral-700 focus:border-accent-500/60 focus:outline-none transition">
+            <span x-text="selectedLabel"></span>
+            <svg class="w-4 h-4 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div x-show="open" x-transition.opacity.duration.100ms class="absolute z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl max-h-56 overflow-auto py-1">
+            <template x-for="o in options" :key="o.value">
+              <button type="button" @click="pick(o.value)" class="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-sm transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'">
+                <span x-text="o.label"></span>
+                <svg x-show="isSelected(o.value)" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monthly: day of month -->
+      <div x-show="sform.frequency === 'monthly'">
+        <label class="text-xs text-neutral-500 mb-1 block">Day of month</label>
+        <div x-data="vfselect(monthDayOpts)" x-modelable="value" x-model="sform.day_of_month" @click.away="open = false" class="relative">
+          <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-2 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm hover:border-neutral-700 focus:border-accent-500/60 focus:outline-none transition">
+            <span x-text="selectedLabel"></span>
+            <svg class="w-4 h-4 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div x-show="open" x-transition.opacity.duration.100ms class="absolute z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl max-h-56 overflow-auto py-1">
+            <template x-for="o in options" :key="o.value">
+              <button type="button" @click="pick(o.value)" class="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-sm transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'">
+                <span x-text="o.label"></span>
+                <svg x-show="isSelected(o.value)" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hourly: minute past the hour -->
+      <div x-show="sform.frequency === 'hourly'">
+        <label class="text-xs text-neutral-500 mb-1 block">Minute past the hour</label>
+        <div x-data="vfselect(minPastHourOpts)" x-modelable="value" x-model="sform.minute" @click.away="open = false" class="relative">
+          <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-2 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm hover:border-neutral-700 focus:border-accent-500/60 focus:outline-none transition">
+            <span x-text="selectedLabel"></span>
+            <svg class="w-4 h-4 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div x-show="open" x-transition.opacity.duration.100ms class="absolute z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl max-h-56 overflow-auto py-1">
+            <template x-for="o in options" :key="o.value">
+              <button type="button" @click="pick(o.value)" class="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-sm transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'">
+                <span x-text="o.label"></span>
+                <svg x-show="isSelected(o.value)" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily / weekly / monthly: time -->
+      <div x-show="sform.frequency !== 'hourly'">
+        <label class="text-xs text-neutral-500 mb-1 block">Time</label>
+        <div class="flex items-center gap-2">
+          <div x-data="vfselect(hourOpts)" x-modelable="value" x-model="sform.hour12" @click.away="open = false" class="relative w-16">
+            <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-1 rounded-lg border border-neutral-800 bg-neutral-950 px-2.5 py-2 text-sm hover:border-neutral-700 focus:outline-none transition">
+              <span x-text="selectedLabel"></span>
+              <svg class="w-3.5 h-3.5 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            <div x-show="open" x-transition.opacity.duration.100ms class="absolute z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl max-h-56 overflow-auto py-1">
+              <template x-for="o in options" :key="o.value">
+                <button type="button" @click="pick(o.value)" class="w-full text-left px-3 py-1.5 text-sm transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'" x-text="o.label"></button>
+              </template>
+            </div>
+          </div>
+          <span class="text-neutral-500">:</span>
+          <div x-data="vfselect(minuteOpts)" x-modelable="value" x-model="sform.minute" @click.away="open = false" class="relative w-16">
+            <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-1 rounded-lg border border-neutral-800 bg-neutral-950 px-2.5 py-2 text-sm hover:border-neutral-700 focus:outline-none transition">
+              <span x-text="selectedLabel"></span>
+              <svg class="w-3.5 h-3.5 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            <div x-show="open" x-transition.opacity.duration.100ms class="absolute z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl max-h-56 overflow-auto py-1">
+              <template x-for="o in options" :key="o.value">
+                <button type="button" @click="pick(o.value)" class="w-full text-left px-3 py-1.5 text-sm transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'" x-text="o.label"></button>
+              </template>
+            </div>
+          </div>
+          <div x-data="vfselect(ampmOpts)" x-modelable="value" x-model="sform.ampm" @click.away="open = false" class="relative w-20">
+            <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-1 rounded-lg border border-neutral-800 bg-neutral-950 px-2.5 py-2 text-sm hover:border-neutral-700 focus:outline-none transition">
+              <span x-text="selectedLabel"></span>
+              <svg class="w-3.5 h-3.5 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+            </button>
+            <div x-show="open" x-transition.opacity.duration.100ms class="absolute z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl py-1">
+              <template x-for="o in options" :key="o.value">
+                <button type="button" @click="pick(o.value)" class="w-full text-left px-3 py-1.5 text-sm transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'" x-text="o.label"></button>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex gap-2 justify-end pt-1">
+      <button @click="closeForm()" class="rounded-lg border border-neutral-700 text-neutral-300 hover:bg-neutral-800 text-sm px-4 py-2 transition">Cancel</button>
+      <button @click="saveForm()" class="rounded-lg bg-accent-500 hover:bg-accent-400 text-neutral-950 font-medium text-sm px-4 py-2 transition" x-text="formMode === 'create' ? 'Create schedule' : 'Save'"></button>
+    </div>
+  </div>
+</div>

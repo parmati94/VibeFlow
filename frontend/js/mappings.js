@@ -43,10 +43,15 @@ export function mappings() {
       }
     },
 
-    openCreate() {
+    // Start scheduling the single selected playlist (from the Sync page).
+    scheduleSelected() {
+      if (this.selectedCount !== 1) return;
+      const id = [...this.selected][0];
+      const pl = this.playlists.find((p) => p.id === id);
+      if (!pl) return;
       this.formMode = 'create';
       this.editingId = null;
-      this.sform = _blankForm();
+      this.sform = { ..._blankForm(), spotify_playlist_id: pl.id, spotify_name: pl.name };
       this.showForm = true;
     },
     openEdit(m) {
@@ -66,18 +71,21 @@ export function mappings() {
             this._toast(false, 'Pick a playlist first.');
             return;
           }
-          const pl = this.playlists.find((p) => p.id === this.sform.spotify_playlist_id);
           await api.createMapping({
             spotify_playlist_id: this.sform.spotify_playlist_id,
-            spotify_name: pl ? pl.name : this.sform.spotify_playlist_id,
+            spotify_name: this.sform.spotify_name || this.sform.spotify_playlist_id,
             enabled: true,
             ..._toSchedule(this.sform),
           });
-          this._toast(true, 'Scheduled sync created.');
-        } else {
-          await api.updateMapping(this.editingId, _toSchedule(this.sform));
-          this._toast(true, 'Schedule updated.');
+          this._toast(true, 'Schedule created.');
+          this.showForm = false;
+          this.clearSelection();
+          await this.loadMappings();
+          this.setView('scheduled');
+          return;
         }
+        await api.updateMapping(this.editingId, _toSchedule(this.sform));
+        this._toast(true, 'Schedule updated.');
         this.showForm = false;
         await this.loadMappings();
       } catch (e) {
@@ -134,13 +142,14 @@ export function mappings() {
 }
 
 function _blankForm() {
-  return { spotify_playlist_id: '', frequency: 'daily', hour12: 3, minute: 0, ampm: 'AM', day_of_week: 0, day_of_month: 1 };
+  return { spotify_playlist_id: '', spotify_name: '', frequency: 'daily', hour12: 3, minute: 0, ampm: 'AM', day_of_week: 0, day_of_month: 1 };
 }
 
 function _formFromMapping(m) {
   const h = m.at_hour ?? 9;
   return {
     spotify_playlist_id: m.spotify_playlist_id,
+    spotify_name: m.spotify_name,
     frequency: m.frequency || 'daily',
     hour12: h % 12 || 12,
     ampm: h >= 12 ? 'PM' : 'AM',
