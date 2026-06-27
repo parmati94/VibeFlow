@@ -7,13 +7,25 @@ export function sync() {
     activeRuns: [],
     history: [],
     syncing: false,
+    showSyncDialog: false,
+    syncMode: 'add',
     _pollTimer: null,
 
-    async startSync() {
+    openSyncDialog() {
+      if (this.selectedCount === 0) return;
+      this.syncMode = 'add';
+      this.showSyncDialog = true;
+    },
+    async confirmSync() {
+      this.showSyncDialog = false;
+      await this.startSync(this.syncMode);
+    },
+
+    async startSync(mode = 'add') {
       if (this.selectedCount === 0 || this.syncing) return;
       this.syncing = true;
       try {
-        const runs = await api.startSync([...this.selected]);
+        const runs = await api.startSync([...this.selected], mode);
         this.activeRuns = runs;
         this.clearSelection();
         this._toast(true, `Syncing ${runs.length} playlist${runs.length > 1 ? 's' : ''}…`);

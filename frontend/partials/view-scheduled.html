@@ -27,6 +27,7 @@
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
               </button>
               <span x-show="m.last_status" class="text-[10px] px-1.5 py-0.5 rounded-full capitalize shrink-0 ml-0.5" :class="statusClass(m.last_status)" x-text="m.last_status"></span>
+              <span x-show="m.mode === 'mirror'" data-tooltip="Mirrors the source — adds new and removes deleted" class="tooltip text-[10px] px-1.5 py-0.5 rounded-full bg-neutral-800 text-neutral-400 shrink-0">mirror</span>
             </div>
             <p class="text-xs text-neutral-500 mt-0.5 truncate">
               <span class="text-accent-400/90" x-text="scheduleLabel(m)"></span>
@@ -39,7 +40,7 @@
             <button @click="toggleMapping(m)" class="tooltip relative w-9 h-5 rounded-full transition mr-1" :class="m.enabled ? 'bg-accent-500' : 'bg-neutral-700'" :data-tooltip="m.enabled ? 'Pause' : 'Resume'">
               <span class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform" :class="m.enabled ? 'translate-x-4' : ''"></span>
             </button>
-            <button @click="runMappingNow(m)" data-tooltip="Sync now" class="tooltip grid place-items-center w-8 h-8 rounded-lg bg-accent-500/15 text-accent-300 hover:bg-accent-500/25 transition">
+            <button @click="askRunNow(m)" data-tooltip="Sync now" class="tooltip grid place-items-center w-8 h-8 rounded-lg bg-accent-500/15 text-accent-300 hover:bg-accent-500/25 transition">
               <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
             </button>
             <span class="w-px h-5 bg-neutral-800 mx-0.5"></span>

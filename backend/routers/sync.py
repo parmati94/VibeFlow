@@ -13,7 +13,7 @@ from backend.core import jobs
 from backend.core.spotify_client import SpotifyClient
 from backend.deps import get_session
 from backend.models.schemas import SyncRequest, SyncRunView, UnmatchedTrack
-from backend.models.tables import SyncRun
+from backend.models.tables import Mapping, SyncRun
 
 router = APIRouter(prefix="/api/sync", tags=["sync"], dependencies=[Depends(require_auth)])
 
@@ -23,9 +23,9 @@ _ACTIVE = ("queued", "running")
 def _view(run: SyncRun) -> SyncRunView:
     unmatched = [UnmatchedTrack(**u) for u in json.loads(run.unmatched or "[]")]
     return SyncRunView(
-        **run.model_dump(exclude={"unmatched", "mapping_id"}),
+        **run.model_dump(exclude={"unmatched", "mapping_id", "trigger"}),
         unmatched=unmatched,
-        scheduled=run.mapping_id is not None,
+        scheduled=run.trigger == "scheduled",
     )
 
 
@@ -45,7 +45,21 @@ def start_sync(
 
     runs: list[SyncRun] = []
     for pid in body.playlist_ids:
-        run = SyncRun(spotify_playlist_id=pid, playlist_name=names.get(pid, pid))
+        name = names.get(pid, pid)
+        # Find-or-create the Spotify→Tidal link so every sync targets ONE Tidal playlist
+        # (no duplicates). A manual-only link has no schedule (frequency=None, enabled=False).
+        mapping = session.exec(
+            select(Mapping).where(Mapping.spotify_playlist_id == pid)
+        ).first()
+        if mapping is None:
+            mapping = Mapping(spotify_playlist_id=pid, spotify_name=name, enabled=False, mode="add")
+            session.add(mapping)
+            session.commit()
+            session.refresh(mapping)
+        run = SyncRun(
+            mapping_id=mapping.id, trigger="manual", mode=body.mode,
+            spotify_playlist_id=pid, playlist_name=name,
+        )
         session.add(run)
         runs.append(run)
     session.commit()

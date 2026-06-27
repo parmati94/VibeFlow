@@ -25,6 +25,10 @@ export function mappings() {
       { value: 'weekly', label: 'Weekly' },
       { value: 'monthly', label: 'Monthly' },
     ],
+    modeOpts: [
+      { value: 'add', label: 'Add new only' },
+      { value: 'mirror', label: 'Mirror (match source)' },
+    ],
     dayOpts: DAY_NAMES.map((label, value) => ({ value, label })),
     monthDayOpts: Array.from({ length: 28 }, (_, i) => ({ value: i + 1, label: String(i + 1) })),
     hourOpts: Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: String(i + 1) })),
@@ -112,6 +116,16 @@ export function mappings() {
       }
     },
 
+    runConfirm: { open: false, mapping: null },
+    askRunNow(m) {
+      this.runConfirm = { open: true, mapping: m };
+    },
+    async confirmRunNow() {
+      const m = this.runConfirm.mapping;
+      this.runConfirm = { open: false, mapping: null };
+      if (m) await this.runMappingNow(m);
+    },
+
     async runMappingNow(m) {
       try {
         await api.runMapping(m.id);
@@ -142,7 +156,7 @@ export function mappings() {
 }
 
 function _blankForm() {
-  return { spotify_playlist_id: '', spotify_name: '', frequency: 'daily', hour12: 3, minute: 0, ampm: 'AM', day_of_week: 0, day_of_month: 1 };
+  return { spotify_playlist_id: '', spotify_name: '', mode: 'add', frequency: 'daily', hour12: 3, minute: 0, ampm: 'AM', day_of_week: 0, day_of_month: 1 };
 }
 
 function _formFromMapping(m) {
@@ -150,6 +164,7 @@ function _formFromMapping(m) {
   return {
     spotify_playlist_id: m.spotify_playlist_id,
     spotify_name: m.spotify_name,
+    mode: m.mode || 'add',
     frequency: m.frequency || 'daily',
     hour12: h % 12 || 12,
     ampm: h >= 12 ? 'PM' : 'AM',
@@ -162,6 +177,7 @@ function _formFromMapping(m) {
 function _toSchedule(f) {
   const to24 = (Number(f.hour12) % 12) + (f.ampm === 'PM' ? 12 : 0);
   return {
+    mode: f.mode,
     frequency: f.frequency,
     at_hour: f.frequency === 'hourly' ? null : to24,
     at_minute: Number(f.minute),

@@ -109,6 +109,8 @@ def trigger_mapping_sync(mapping_id: int) -> int | None:
             return None
         run = SyncRun(
             mapping_id=mapping.id,
+            trigger="scheduled",
+            mode=mapping.mode,
             spotify_playlist_id=mapping.spotify_playlist_id,
             playlist_name=mapping.spotify_name,
         )

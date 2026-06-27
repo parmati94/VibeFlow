@@ -36,23 +36,31 @@ def init_db() -> None:
     _migrate()
 
 
-# Columns added to `mapping` after the table first shipped. SQLite create_all() only creates
-# missing tables, never new columns, so add them by hand (additive, non-destructive).
-_MAPPING_ADDS = {
-    "frequency": "VARCHAR",
-    "at_hour": "INTEGER",
-    "at_minute": "INTEGER DEFAULT 0",
-    "day_of_week": "INTEGER",
-    "day_of_month": "INTEGER",
+# Columns added after a table first shipped. SQLite create_all() only creates missing
+# tables, never new columns, so add them by hand (additive, non-destructive).
+_TABLE_ADDS = {
+    "mapping": {
+        "frequency": "VARCHAR",
+        "at_hour": "INTEGER",
+        "at_minute": "INTEGER DEFAULT 0",
+        "day_of_week": "INTEGER",
+        "day_of_month": "INTEGER",
+        "mode": "VARCHAR DEFAULT 'add'",
+    },
+    "syncrun": {
+        "trigger": "VARCHAR DEFAULT 'manual'",
+        "mode": "VARCHAR DEFAULT 'add'",
+    },
 }
 
 
 def _migrate() -> None:
     with engine.begin() as conn:
-        existing = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(mapping)")}
-        for col, ddl in _MAPPING_ADDS.items():
-            if col not in existing:
-                conn.exec_driver_sql(f"ALTER TABLE mapping ADD COLUMN {col} {ddl}")
+        for table, adds in _TABLE_ADDS.items():
+            existing = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
+            for col, ddl in adds.items():
+                if col not in existing:
+                    conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
 
 
 def get_session() -> Iterator[Session]:

@@ -141,6 +141,26 @@
           </div>
         </div>
       </div>
+
+      <!-- Reconcile mode (how re-syncs treat the existing Tidal playlist) -->
+      <div>
+        <label class="text-xs text-neutral-500 mb-1 block">When re-syncing</label>
+        <div x-data="vfselect(modeOpts)" x-modelable="value" x-model="sform.mode" @click.away="open = false" class="relative">
+          <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-2 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm hover:border-neutral-700 focus:border-accent-500/60 focus:outline-none transition">
+            <span x-text="selectedLabel"></span>
+            <svg class="w-4 h-4 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          <div x-show="open" x-transition.opacity.duration.100ms class="absolute z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl py-1">
+            <template x-for="o in options" :key="o.value">
+              <button type="button" @click="pick(o.value)" class="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-sm transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'">
+                <span x-text="o.label"></span>
+                <svg x-show="isSelected(o.value)" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+              </button>
+            </template>
+          </div>
+        </div>
+        <p class="text-[11px] text-neutral-500 mt-1.5" x-text="sform.mode === 'mirror' ? 'Tidal will match Spotify exactly — new tracks added, removed ones deleted.' : 'New tracks are added; nothing already on Tidal is removed.'"></p>
+      </div>
     </div>
 
     <div class="flex gap-2 justify-end pt-1">

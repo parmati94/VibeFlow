@@ -28,6 +28,7 @@ class PlaylistSummary(BaseModel):
 
 class SyncRequest(BaseModel):
     playlist_ids: list[str]
+    mode: str = "add"  # add | mirror (for this one-time sync)
 
 
 class UnmatchedTrack(BaseModel):
@@ -65,6 +66,7 @@ class ScheduleFields(BaseModel):
     at_minute: int = 0
     day_of_week: int | None = None  # 0=Mon
     day_of_month: int | None = None  # 1-28
+    mode: str = "add"  # add | mirror
 
 
 class MappingCreate(ScheduleFields):
@@ -84,6 +86,7 @@ class MappingView(BaseModel):
     tidal_playlist_id: str | None
     tidal_name: str | None
     enabled: bool
+    mode: str
     frequency: str | None
     at_hour: int | None
     at_minute: int
