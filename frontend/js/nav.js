@@ -18,7 +18,7 @@ export function nav() {
         this.loadMappings();
         if (!this.playlists.length) this.loadPlaylists();
       }
-      if (v === 'history') this.loadHistory();
+      if (v === 'history') this.openHistory();
       if (v === 'sync' && !this.playlists.length) this.loadPlaylists();
     },
   };

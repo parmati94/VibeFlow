@@ -38,8 +38,20 @@ def init_db() -> None:
     # which references every model column — so a freshly-added column must exist on the table
     # first (on an upgraded DB create_all won't have added it).
     _add_columns()
+    _add_indexes()
     admin_id = _bootstrap_admin()
     _migrate(admin_id)
+
+
+def _add_indexes() -> None:
+    """Indexes that postdate a table's first ship (create_all won't add them to an existing
+    table). Idempotent. The syncrun index speeds the day-grouped history page's per-user,
+    date-ordered queries as run history grows."""
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "CREATE INDEX IF NOT EXISTS ix_syncrun_user_created "
+            "ON syncrun (user_id, created_at)"
+        )
 
 
 def _bootstrap_admin() -> int:

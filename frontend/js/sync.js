@@ -52,7 +52,10 @@ export function sync() {
         /* keep last */
       }
       await this.loadHistory();
-      if (this.activeRuns.length === 0) this._stopPolling();
+      if (this.activeRuns.length === 0) {
+        this._stopPolling();
+        if (this.view === 'history') this.refreshHistory();
+      }
     },
 
     _startPolling() {

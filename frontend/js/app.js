@@ -2,6 +2,7 @@ import Alpine from 'alpinejs';
 import './select.js'; // registers the reusable vfselect dropdown component
 import { api } from './api.js';
 import { connection } from './connection.js';
+import { history } from './history.js';
 import { mappings } from './mappings.js';
 import { nav } from './nav.js';
 import { notifications } from './notifications.js';
@@ -23,6 +24,7 @@ document.addEventListener('alpine:init', () => {
     ...mappings(),
     ...users(),
     ...notifications(),
+    ...history(),
 
     booting: true,
     loginEnabled: false,
@@ -49,16 +51,6 @@ document.addEventListener('alpine:init', () => {
     get playlistOpts() {
       return this.playlists.map((p) => ({ value: p.id, label: `${p.name} (${p.track_count})` }));
     },
-    get manualRuns() {
-      return this.history.filter((r) => !r.scheduled);
-    },
-    get scheduledRuns() {
-      return this.history.filter((r) => r.scheduled);
-    },
-    get visibleRuns() {
-      return this.historyTab === 'scheduled' ? this.scheduledRuns : this.manualRuns;
-    },
-
     // ── Home dashboard ──
     get upcomingSchedules() {
       return this.mappings
