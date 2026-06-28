@@ -120,4 +120,8 @@ class TrackMatch(SQLModel, table=True):
     isrc: str | None = None
     tidal_id: str | None = None
     matched_by: str | None = None
+    # Scoring-algorithm version this was resolved under. metadata/none results are served from
+    # cache only while this matches matcher.MATCH_VERSION (and within the TTL); a bump re-resolves
+    # them. Defaults 0 so rows from before this column re-resolve once. isrc/manual ignore it.
+    matcher_version: int = 0
     updated_at: datetime = Field(default_factory=_utcnow)

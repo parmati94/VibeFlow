@@ -7,15 +7,19 @@ Two tiers:
      the best only above a confidence cutoff; otherwise leave it unmatched rather than
      adding a wrong track.
 
-Cache: ISRC/manual matches are authoritative and short-circuit. Metadata matches and misses
-are re-resolved each run, so matcher improvements (and previously-wrong picks) self-heal.
+Cache: ISRC/manual matches are authoritative and short-circuit forever (exact identity).
+Metadata matches and misses are the expensive path (a per-track Tidal search), so they're
+also served from cache — but only while "fresh": same matcher version and within `_CACHE_TTL`.
+This keeps recurring syncs from re-searching every run, while still self-healing — a matcher
+change (bump `MATCH_VERSION`) busts them immediately, and the TTL re-resolves periodically to
+pick up catalog changes (a previously-missing track that became available).
 """
 
 from __future__ import annotations
 
 import re
 import unicodedata
-from datetime import datetime
+from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 
 from sqlmodel import Session
@@ -38,6 +42,13 @@ _ARTIST_MATCH = 0.85   # per-artist fuzzy threshold to count as the same artist
 _TITLE_GATE = 0.6      # below this title similarity, reject outright
 _ACCEPT = 0.55         # minimum combined score to accept a candidate
 _DURATION_WINDOW = 20  # seconds; |Δ| beyond this scores 0
+
+# Cache freshness for metadata matches + misses (the expensive search path). Bump
+# MATCH_VERSION whenever the scoring above changes, so previously-cached metadata/none results
+# re-resolve and matcher improvements take effect; _CACHE_TTL re-resolves them periodically
+# regardless, to catch Tidal catalog changes. ISRC/manual hits ignore both (exact identity).
+MATCH_VERSION = 1
+_CACHE_TTL = timedelta(days=7)
 
 
 def _fold(text: str) -> str:
@@ -146,10 +157,15 @@ def resolve(
     spotify_id = track["spotify_id"]
 
     cached = session.get(TrackMatch, spotify_id) if use_cache else None
-    if cached and cached.tidal_id and cached.matched_by in ("isrc", "manual"):
-        # Attribute the cached hit to its original method so run stats count it (a cache
-        # hit is still an ISRC/manual match — not "uncounted").
-        return cached.tidal_id, cached.matched_by
+    if cached:
+        # ISRC/manual are exact identity — always authoritative. (Returning the original
+        # matched_by keeps run stats counting the hit, not treating it as "uncounted".)
+        if cached.tidal_id and cached.matched_by in ("isrc", "manual"):
+            return cached.tidal_id, cached.matched_by
+        # Metadata matches and confirmed misses cost a Tidal search to recompute and rarely
+        # change — serve them from cache while fresh instead of re-searching every run.
+        if cached.matched_by in ("metadata", "none") and _is_fresh(cached):
+            return cached.tidal_id, cached.matched_by
 
     isrc = track.get("isrc")
     if isrc:
@@ -175,6 +191,17 @@ def resolve(
     return None, "none"
 
 
+def _is_fresh(cached: TrackMatch) -> bool:
+    """Whether a cached metadata/none result can be trusted without re-resolving: resolved by
+    the current matcher version and within the TTL window. Older rows (e.g. pre-upgrade, where
+    matcher_version defaults to 0) fail this and get re-resolved once, then re-cached fresh."""
+    if (cached.matcher_version or 0) != MATCH_VERSION:
+        return False
+    if cached.updated_at is None:
+        return False
+    return datetime.utcnow() - cached.updated_at < _CACHE_TTL
+
+
 def _cache(
     session: Session, spotify_id: str, isrc: str | None, tidal_id: str | None, by: str
 ) -> None:
@@ -182,6 +209,7 @@ def _cache(
     row.isrc = isrc
     row.tidal_id = tidal_id
     row.matched_by = by
+    row.matcher_version = MATCH_VERSION
     row.updated_at = datetime.utcnow()
     session.add(row)
     session.commit()

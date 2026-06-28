@@ -52,6 +52,7 @@ Thumbs.db
 
 # Planning / scratch (local only)
 PLANNING.md
+docs/
 
 # Personal deploy config (per-box; not shared)
 docker-compose.local.yml
