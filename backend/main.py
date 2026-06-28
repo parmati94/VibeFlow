@@ -19,7 +19,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from backend.common.config import get_settings
 from backend.common.db import init_db
 from backend.common.logging_config import logger, setup_logging
-from backend.core import scheduler
+from backend.core import jobs, scheduler
 from backend.routers import appauth, mappings, oauth, playlists, sync, system, users
 
 settings = get_settings()
@@ -32,6 +32,9 @@ async def lifespan(app: FastAPI):
     setup_logging(settings.log_level)
     init_db()
     logger.info("VibeFlow starting up (db ready).")
+    # Fail any runs stranded mid-flight by the previous shutdown — the in-memory worker
+    # queue doesn't survive a restart, so those rows would never reach a terminal state.
+    jobs.reconcile_interrupted_runs()
     if settings.dev_auth:
         logger.warning(
             "DEV_AUTH enabled — Spotify 'Connect' uses the refresh-token bypass, "
