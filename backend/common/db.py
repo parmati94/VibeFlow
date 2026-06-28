@@ -78,6 +78,9 @@ _TABLE_ADDS = {
         "mode": "VARCHAR DEFAULT 'add'",
         "user_id": "INTEGER",
     },
+    "trackmatch": {
+        "matcher_version": "INTEGER DEFAULT 0",
+    },
 }
 
 
