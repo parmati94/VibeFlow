@@ -20,6 +20,7 @@ from difflib import SequenceMatcher
 
 from sqlmodel import Session
 
+from backend.common.logging_config import logger
 from backend.core.tidal_client import TidalClient
 from backend.models.tables import TrackMatch
 
@@ -103,19 +104,29 @@ def _best_candidate(track: dict, candidates: list[dict]) -> tuple[dict, float] |
     for rank, cand in enumerate(candidates):
         title = _title_score(track["name"], cand["title"])
         if title < _TITLE_GATE:
+            logger.debug(
+                "  reject #%d %r — title %.2f < gate %.2f", rank, cand["title"], title, _TITLE_GATE
+            )
             continue
         artist = _artist_score(spotify_artists, cand["artists"])
         if artist == 0.0:
+            logger.debug("  reject #%d %r — no artist overlap %s", rank, cand["title"], cand["artists"])
             continue  # candidate has artists, none match → definitively wrong
         artist_val = 0.5 if artist is None else artist
         duration = _duration_score(track.get("duration_ms"), cand.get("duration"))
         score = _W_ARTIST * artist_val + _W_TITLE * title + _W_DURATION * duration
         # Tiny tiebreak toward Tidal's own ranking.
         score -= rank * 1e-4
+        logger.debug(
+            "  cand #%d %r — score %.3f (artist %.2f, title %.2f, dur %.2f)",
+            rank, cand["title"], score, artist_val, title, duration,
+        )
         if best is None or score > best[1]:
             best = (cand, score)
     if best and best[1] >= _ACCEPT:
         return best
+    if best:
+        logger.debug("  best %.3f < accept %.2f → unmatched", best[1], _ACCEPT)
     return None
 
 
@@ -149,11 +160,17 @@ def resolve(
 
     query = f"{normalize_title(track['name'])} {' '.join(track.get('artists', []))}".strip()
     candidates = tidal.search_candidates(query)
+    logger.debug(
+        "resolve %r (isrc=%s) → no ISRC hit; metadata search %r returned %d candidate(s)",
+        track["name"], isrc, query, len(candidates),
+    )
     best = _best_candidate(track, candidates)
     if best:
+        logger.debug("  matched → %s (score %.3f)", best[0]["id"], best[1])
         _cache(session, spotify_id, isrc, best[0]["id"], "metadata")
         return best[0]["id"], "metadata"
 
+    logger.debug("  unmatched: %r by %s", track["name"], track.get("artists", []))
     _cache(session, spotify_id, isrc, None, "none")
     return None, "none"
 

@@ -75,6 +75,7 @@ class TidalClient:
             resp = self._client.request(
                 method, path, json=json, params=params, headers=headers
             )
+            logger.debug("Tidal %s %s -> %s", method, path, resp.status_code)
             if resp.status_code == 429 or resp.status_code >= 500:
                 wait = float(resp.headers.get("Retry-After", backoff))
                 logger.warning(
