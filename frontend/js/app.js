@@ -4,6 +4,7 @@ import { api } from './api.js';
 import { connection } from './connection.js';
 import { mappings } from './mappings.js';
 import { nav } from './nav.js';
+import { notifications } from './notifications.js';
 import { playlists } from './playlists.js';
 import { sync } from './sync.js';
 import { theme } from './theme.js';
@@ -21,6 +22,7 @@ document.addEventListener('alpine:init', () => {
     ...sync(),
     ...mappings(),
     ...users(),
+    ...notifications(),
 
     booting: true,
     loginEnabled: false,
@@ -93,6 +95,7 @@ document.addEventListener('alpine:init', () => {
         this.currentUser = status.user;
         this.isAdmin = !!(status.user && status.user.is_admin);
         if (this.isAdmin) this.loadUsers();
+        this.loadNotifications();
       } catch (e) {
         /* status is open; if it fails treat as no gate */
       }

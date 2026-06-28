@@ -18,6 +18,10 @@ services:
       # the admin then manages users in-app (no USERNAME/PASSWORD env vars).
       - ENABLE_LOGIN=false
       - LOG_LEVEL=INFO
+      # Logo on Discord notifications (sender avatar + embed footer). Discord fetches this
+      # from its own servers, so it must be a PUBLIC URL. Defaults to the committed app icon
+      # on GitHub; uncomment to self-host the asset.
+      # - NOTIFY_AVATAR_URL=https://your.host/vibeflow-icon.png
     volumes:
       # SQLite (credentials, mappings, run history, match cache). Point this at a
       # persistent host path you control, e.g. /home/youruser/vibeflow/data.

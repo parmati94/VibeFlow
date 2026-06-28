@@ -15,7 +15,7 @@ from datetime import datetime
 from backend.auth import store
 from backend.common.db import new_session
 from backend.common.logging_config import logger
-from backend.core import matcher
+from backend.core import matcher, notifications
 from backend.core.spotify_client import SpotifyClient
 from backend.core.tidal_client import TidalClient
 from backend.models.tables import Mapping, SyncRun, User
@@ -51,6 +51,9 @@ def run_sync(run_id: int) -> None:
             _fail(session, run, str(exc))
     finally:
         session.close()
+        # Run has reached a terminal state (every path above closes the session first);
+        # notify its owner per their preferences. Uses its own session, guards on run state.
+        notifications.notify_run_finished(run_id)
 
 
 def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) -> None:

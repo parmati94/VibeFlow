@@ -65,6 +65,16 @@ class Settings(BaseSettings):
     # --- Logging ---
     log_level: str = Field("INFO", alias="LOG_LEVEL")
 
+    # --- Notifications ---
+    # Logo shown on Discord webhook messages (sender avatar + embed footer). Discord fetches
+    # this from its own servers, so it must be a PUBLIC URL — defaults to the committed app
+    # icon on GitHub (reachable regardless of where VibeFlow itself is deployed). Override to
+    # self-host the asset.
+    notify_avatar_url: str = Field(
+        "https://raw.githubusercontent.com/parmati94/VibeFlow/main/frontend/public/icon-512.png",
+        alias="NOTIFY_AVATAR_URL",
+    )
+
     # --- Dev auth bypass (NEVER enable in a real deploy) ---
     # When on, the Spotify "Connect" seeds the session from a pre-captured refresh token
     # instead of running the browser OAuth flow — so a headless box (or one whose redirect
