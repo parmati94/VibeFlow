@@ -36,9 +36,10 @@ def _enabled_config(session, user_id: int) -> NotificationConfig | None:
 
 def _post(webhook_url: str, embed: dict) -> bool:
     """POST one embed to a Discord webhook. Brands every message with the app logo (sender
-    avatar + embed footer) and a timestamp. Returns success; never raises."""
+    avatar + an author line) and a timestamped footer. Returns success; never raises."""
     avatar = get_settings().notify_avatar_url
-    embed.setdefault("footer", {"text": "VibeFlow", "icon_url": avatar})
+    embed.setdefault("author", {"name": "VibeFlow", "icon_url": avatar})
+    embed.setdefault("footer", {"text": "VibeFlow"})
     embed.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
     payload = {"username": "VibeFlow", "avatar_url": avatar, "embeds": [embed]}
     try:
@@ -54,8 +55,10 @@ def _post(webhook_url: str, embed: dict) -> bool:
         return False
 
 
-def _field(name: str, value, inline: bool = True) -> dict:
-    return {"name": name, "value": str(value), "inline": inline}
+def _tidal_url(playlist_id: str | None) -> str | None:
+    """Public Tidal playlist link. Opens the native app on mobile (universal link), the web
+    player on desktop. Discord only makes http(s) links clickable, so this is the right form."""
+    return f"https://tidal.com/playlist/{playlist_id}" if playlist_id else None
 
 
 def notify_run_finished(run_id: int) -> None:
@@ -75,23 +78,25 @@ def notify_run_finished(run_id: int) -> None:
             if not cfg.on_failure:
                 return
             embed = {
-                "title": f"❌ Sync failed: {run.playlist_name}",
-                "description": run.error or "The sync run ended in an error.",
+                "title": run.playlist_name,
+                "description": f"Sync failed — {run.error or 'unknown error'}",
                 "color": _RED,
             }
         else:  # success | partial
             if not cfg.on_success:
                 return
-            partial = run.status == "partial"
+            matched = run.matched_isrc + run.matched_meta
             embed = {
-                "title": f"{'⚠️' if partial else '✅'} Sync complete: {run.playlist_name}",
-                "color": _AMBER if partial else _GREEN,
-                "fields": [
-                    _field("Added", run.added),
-                    _field("Matched", run.matched_isrc + run.matched_meta),
-                    _field("Unmatched", run.not_found),
-                ],
+                "title": run.playlist_name,
+                "description": (
+                    f"Synced to Tidal  ·  **{run.added}** added, "
+                    f"**{matched}** matched, **{run.not_found}** unmatched"
+                ),
+                "color": _AMBER if run.status == "partial" else _GREEN,
             }
+        url = _tidal_url(run.tidal_playlist_id)
+        if url:
+            embed["url"] = url
         _post(cfg.webhook_url, embed)
     finally:
         session.close()
@@ -109,7 +114,7 @@ def notify_token_revoked(user_id: int, provider: str) -> None:
         _post(
             cfg.webhook_url,
             {
-                "title": f"🔌 {name} disconnected",
+                "title": f"{name} disconnected",
                 "description": (
                     f"VibeFlow's {name} connection was rejected (likely revoked or a changed "
                     f"password). Scheduled syncs will stop until you reconnect {name} in VibeFlow."
@@ -127,8 +132,8 @@ def send_test(webhook_url: str) -> bool:
     return _post(
         webhook_url,
         {
-            "title": "🎵 VibeFlow test notification",
-            "description": "If you can see this, your webhook is wired up correctly.",
+            "title": "Test notification",
+            "description": "Your webhook is wired up correctly.",
             "color": _GREEN,
         },
     )
