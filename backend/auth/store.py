@@ -137,5 +137,9 @@ def _handle_refresh_failure(
             provider.title(),
         )
         disconnect(session, user_id, provider)
+        # Surface the silent failure: scheduled syncs will stop until the user reconnects.
+        from backend.core import notifications
+
+        notifications.notify_token_revoked(user_id, provider)
     else:
         logger.error("%s token refresh failed (transient): %s", provider.title(), exc)

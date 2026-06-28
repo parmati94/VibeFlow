@@ -58,6 +58,12 @@ export const api = {
       body: JSON.stringify({ new_password: newPassword }),
     }),
 
+  // Notification settings (per-user Discord webhook)
+  getNotifications: () => request('/api/notifications'),
+  saveNotifications: (body) => request('/api/notifications', { method: 'PUT', body: JSON.stringify(body) }),
+  testNotification: (webhookUrl) =>
+    request('/api/notifications/test', { method: 'POST', body: JSON.stringify({ webhook_url: webhookUrl }) }),
+
   // Scheduled-sync mappings
   listMappings: () => request('/api/mappings'),
   createMapping: (body) => request('/api/mappings', { method: 'POST', body: JSON.stringify(body) }),

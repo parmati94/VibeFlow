@@ -20,7 +20,16 @@ from backend.common.config import get_settings
 from backend.common.db import init_db
 from backend.common.logging_config import logger, setup_logging
 from backend.core import jobs, scheduler
-from backend.routers import appauth, mappings, oauth, playlists, sync, system, users
+from backend.routers import (
+    appauth,
+    mappings,
+    notifications,
+    oauth,
+    playlists,
+    sync,
+    system,
+    users,
+)
 
 settings = get_settings()
 
@@ -67,6 +76,7 @@ app.include_router(oauth.router)
 app.include_router(playlists.router)
 app.include_router(sync.router)
 app.include_router(mappings.router)
+app.include_router(notifications.router)
 
 
 if __name__ == "__main__":
