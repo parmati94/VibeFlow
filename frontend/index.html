@@ -28,13 +28,73 @@
       <div x-show="view === 'scheduled'">{{> view-scheduled }}</div>
       <div x-show="view === 'history'" class="space-y-4">
         <h2 class="text-lg font-semibold">Sync history</h2>
-        <div class="inline-flex rounded-lg border border-neutral-800 bg-neutral-900/50 p-0.5 text-sm">
-          <button @click="historyTab = 'manual'" class="px-3 py-1.5 rounded-md transition" :class="historyTab === 'manual' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'">
-            Manual <span class="text-neutral-500" x-text="`(${manualRuns.length})`"></span>
-          </button>
-          <button @click="historyTab = 'scheduled'" class="px-3 py-1.5 rounded-md transition" :class="historyTab === 'scheduled' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'">
-            Scheduled <span class="text-neutral-500" x-text="`(${scheduledRuns.length})`"></span>
-          </button>
+        <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div class="inline-flex rounded-lg border border-neutral-800 bg-neutral-900/50 p-0.5 text-sm self-start">
+            <button @click="setHistoryTab('manual')" class="px-3 py-1.5 rounded-md transition" :class="historyTab === 'manual' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'">
+              Manual
+            </button>
+            <button @click="setHistoryTab('scheduled')" class="px-3 py-1.5 rounded-md transition" :class="historyTab === 'scheduled' ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-neutral-200'">
+              Scheduled
+            </button>
+          </div>
+
+          <!-- Jump to a month + configurable load size (on-brand dropdowns). On mobile this
+               becomes a full-width toolbar under the tabs; the month picker stretches. -->
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <!-- Month jump (calendar popover) -->
+            <div x-data="vfmonthpicker('Jump to month…')" x-modelable="value" x-model="histJump" @click.away="open = false" class="relative flex-1 min-w-0 sm:flex-none sm:w-44">
+              <button type="button" @click="toggle()" class="w-full flex items-center justify-between gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-xs text-neutral-300 hover:border-neutral-700 focus:outline-none transition">
+                <span class="flex items-center gap-1.5 min-w-0">
+                  <svg class="w-3.5 h-3.5 text-neutral-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  <span class="truncate" x-text="selectedLabel"></span>
+                </span>
+                <svg class="w-3.5 h-3.5 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              <div x-show="open" x-transition.opacity.duration.100ms class="absolute left-0 sm:left-auto sm:right-0 z-30 mt-1 w-60 max-w-[calc(100vw-1.5rem)] rounded-xl border border-neutral-800 bg-neutral-950 shadow-xl p-3">
+                <!-- Year nav -->
+                <div class="flex items-center justify-between mb-2">
+                  <button type="button" @click="prevYear()" class="w-7 h-7 grid place-items-center rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition">‹</button>
+                  <span class="text-sm font-medium text-neutral-200" x-text="viewYear"></span>
+                  <button type="button" @click="nextYear()" :disabled="!canNext" class="w-7 h-7 grid place-items-center rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition disabled:opacity-30 disabled:hover:bg-transparent">›</button>
+                </div>
+                <!-- Month grid -->
+                <div class="grid grid-cols-3 gap-1">
+                  <template x-for="(mn, idx) in months" :key="idx">
+                    <button
+                      type="button"
+                      @click="jumpToMonth(choose(idx))"
+                      :disabled="isFuture(idx)"
+                      class="py-1.5 rounded-lg text-xs transition disabled:opacity-25 disabled:cursor-not-allowed"
+                      :class="isSelected(idx) ? 'bg-accent-500 text-neutral-950 font-medium' : 'text-neutral-300 hover:bg-neutral-800'"
+                      x-text="mn"
+                    ></button>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <button
+              x-show="hist[historyTab].seeked"
+              @click="jumpToLatest()"
+              class="text-xs rounded-xl border border-neutral-700 text-neutral-300 hover:border-accent-500/40 hover:text-accent-200 px-3 py-2 transition shrink-0"
+            >↑ Latest</button>
+
+            <!-- Load size -->
+            <div x-data="vfselect(histLimitOpts)" x-modelable="value" x-model="histLimit" @click.away="open = false" class="relative w-28 shrink-0">
+              <button type="button" @click="open = !open" class="w-full flex items-center justify-between gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 px-3 py-2 text-xs text-neutral-300 hover:border-neutral-700 focus:outline-none transition">
+                <span class="truncate" x-text="selectedLabel"></span>
+                <svg class="w-3.5 h-3.5 text-neutral-500 transition-transform shrink-0" :class="open && 'rotate-180'" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              <div x-show="open" x-transition.opacity.duration.100ms class="absolute right-0 z-30 mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 shadow-xl py-1">
+                <template x-for="o in options" :key="o.value">
+                  <button type="button" @click="pick(o.value); setHistLimit(o.value)" class="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-xs transition hover:bg-neutral-800" :class="isSelected(o.value) ? 'text-accent-300' : 'text-neutral-200'">
+                    <span x-text="o.label"></span>
+                    <svg x-show="isSelected(o.value)" class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
+                  </button>
+                </template>
+              </div>
+            </div>
+          </div>
         </div>
         {{> history }}
       </div>

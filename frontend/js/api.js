@@ -35,6 +35,14 @@ export const api = {
     request('/api/sync', { method: 'POST', body: JSON.stringify({ playlist_ids: playlistIds, mode }) }),
   activeRuns: () => request('/api/sync/active'),
   recentRuns: (limit = 20) => request(`/api/sync/runs?limit=${limit}`),
+  // Day-grouped, paginated history
+  historyDays: (scheduled, before, limit = 30) => {
+    const p = new URLSearchParams({ scheduled: !!scheduled, limit });
+    if (before) p.set('before', before);
+    return request(`/api/sync/history/days?${p}`);
+  },
+  historyDayRuns: (scheduled, day) =>
+    request(`/api/sync/history/runs?scheduled=${!!scheduled}&day=${encodeURIComponent(day)}`),
   disconnect: (provider) => request(`/auth/${provider}/logout`, { method: 'POST' }),
 
   // App login gate

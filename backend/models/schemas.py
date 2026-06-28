@@ -61,6 +61,17 @@ class MessageResponse(BaseModel):
     message: str
 
 
+class HistoryDay(BaseModel):
+    """One day's rollup of sync runs (for the day-grouped, paginated history page)."""
+
+    day: str  # local calendar date, YYYY-MM-DD
+    run_count: int
+    added: int
+    success: int
+    partial: int
+    error: int
+
+
 class ScheduleFields(BaseModel):
     frequency: str | None = None  # hourly | daily | weekly | monthly
     at_hour: int | None = None
