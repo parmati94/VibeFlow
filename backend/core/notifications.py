@@ -7,8 +7,11 @@ NotificationConfig and only fires when notifications are enabled and that event 
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 import httpx
 
+from backend.common.config import get_settings
 from backend.common.db import new_session
 from backend.common.logging_config import logger
 from backend.models.tables import NotificationConfig, SyncRun
@@ -32,8 +35,12 @@ def _enabled_config(session, user_id: int) -> NotificationConfig | None:
 
 
 def _post(webhook_url: str, embed: dict) -> bool:
-    """POST one embed to a Discord webhook. Returns success; never raises."""
-    payload = {"username": "VibeFlow", "embeds": [embed]}
+    """POST one embed to a Discord webhook. Brands every message with the app logo (sender
+    avatar + embed footer) and a timestamp. Returns success; never raises."""
+    avatar = get_settings().notify_avatar_url
+    embed.setdefault("footer", {"text": "VibeFlow", "icon_url": avatar})
+    embed.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
+    payload = {"username": "VibeFlow", "avatar_url": avatar, "embeds": [embed]}
     try:
         resp = httpx.post(webhook_url, json=payload, timeout=_TIMEOUT)
         if resp.status_code >= 400:
