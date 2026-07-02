@@ -70,6 +70,10 @@ class Mapping(SQLModel, table=True):
     day_of_month: int | None = None
     interval_minutes: int | None = None  # legacy fixed-interval mappings (pre-cron)
     last_run_at: datetime | None = None
+    # Spotify's playlist version id from the last successful full sync. When the source's
+    # current snapshot_id still matches this, its contents are unchanged, so a re-sync would
+    # add nothing — we skip the whole Tidal round-trip. See sync_engine._execute.
+    last_snapshot_id: str | None = None
     created_at: datetime = Field(default_factory=_utcnow)
 
 

@@ -6,6 +6,8 @@ the matcher/sync engine expect, dropping local files (not resolvable on Tidal).
 
 from __future__ import annotations
 
+import time
+
 import spotipy
 
 
@@ -34,12 +36,22 @@ class SpotifyClient:
         return items
 
     def get_playlist(self, playlist_id: str) -> dict:
-        pl = self._sp.playlist(playlist_id, fields="id,name,description,tracks.total")
+        # snapshot_id is Spotify's playlist-version id — it changes whenever the contents
+        # change, so the sync engine uses it to skip a re-sync that would add nothing.
+        # _cb is a cache-buster: Spotify edge-caches this response by URL and can serve a
+        # stale snapshot_id for ~a minute after an edit; a unique param forces a fresh read
+        # so the short-circuit never skips a just-changed playlist.
+        pl = self._sp._get(
+            f"playlists/{playlist_id}",
+            fields="id,name,description,snapshot_id,tracks.total",
+            _cb=str(time.time()),
+        )
         return {
             "id": pl["id"],
             "name": pl["name"],
             "description": pl.get("description"),
             "track_count": pl["tracks"]["total"],
+            "snapshot_id": pl.get("snapshot_id"),
         }
 
     def get_tracks(self, playlist_id: str) -> list[dict]:

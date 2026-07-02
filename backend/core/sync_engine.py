@@ -62,6 +62,30 @@ def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) 
     allow_dupes = bool(owner and owner.allow_duplicates)
 
     details = spotify.get_playlist(run.spotify_playlist_id)
+
+    # Fast path: if the source playlist's version id is unchanged since our last successful
+    # sync, its contents are identical, so a full run would add (and, in mirror mode, remove)
+    # nothing. Skip the entire Tidal round-trip — the expensive part that drains Tidal's rate
+    # limit on every idle cycle. A stale snapshot only ever delays a sync to the next run, and
+    # get_playlist cache-busts to keep that window near zero. Manual-only runs (no mapping)
+    # always do the full pass. Mirror mode is included deliberately: the only thing skipped is
+    # deleting tracks hand-added on the Tidal side, which the owner presumably wants to keep.
+    snapshot_id = details.get("snapshot_id")
+    if mapping and snapshot_id and snapshot_id == mapping.last_snapshot_id:
+        run.playlist_name = details["name"]
+        run.tidal_playlist_id = mapping.tidal_playlist_id
+        run.total = run.processed = 0
+        run.added = run.not_found = 0
+        run.unmatched = json.dumps([])
+        run.status = "success"
+        run.finished_at = datetime.utcnow()
+        session.add(run)
+        mapping.last_run_at = datetime.utcnow()
+        session.add(mapping)
+        session.commit()
+        logger.info("Sync run %s skipped: source unchanged (snapshot %s)", run.id, snapshot_id)
+        return
+
     tracks = spotify.get_tracks(run.spotify_playlist_id)
     run.total = len(tracks)
     run.playlist_name = details["name"]
@@ -153,6 +177,11 @@ def _execute(session, run: SyncRun, spotify: SpotifyClient, tidal: TidalClient) 
 
     if mapping:
         mapping.last_run_at = datetime.utcnow()
+        # Record the source version we just reconciled to, so the next run can skip if the
+        # playlist hasn't changed. Only after a full success — a partial/crashed run leaves
+        # it untouched so we re-attempt rather than wrongly skip.
+        if snapshot_id and run.status == "success":
+            mapping.last_snapshot_id = snapshot_id
         session.add(mapping)
     session.commit()
     logger.info(
