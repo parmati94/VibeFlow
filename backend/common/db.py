@@ -84,6 +84,7 @@ _TABLE_ADDS = {
         "day_of_month": "INTEGER",
         "mode": "VARCHAR DEFAULT 'add'",
         "user_id": "INTEGER",
+        "last_snapshot_id": "VARCHAR",
     },
     "syncrun": {
         "trigger": "VARCHAR DEFAULT 'manual'",
